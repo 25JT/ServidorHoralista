@@ -22,23 +22,23 @@ app.listen(3000, () => {
 
 
 app.use(session({
-  secret: 'clave_secreta_segura',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    maxAge: 1000 * 60 * 60, // 1 hora
-  }
+    secret: 'clave_secreta_segura',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        maxAge: 1000 * 60 * 60, // 1 hora
+    }
 }));
 
 
 //verificar sesion
 function verificarSesion(req, res, next) {
     if (req.session && req.session.usuarioId) {
-      next(); // Usuario autenticado, continuar
+        next(); // Usuario autenticado, continuar
     } else {
-      res.status(401).json({ mensaje: 'No autorizado. Inicia sesión primero.' });
+        res.status(401).json({ mensaje: 'No autorizado. Inicia sesión primero.' });
     }
-  }
+}
 
 
 app.get("/", (req, res) => {
@@ -48,7 +48,7 @@ app.get("/", (req, res) => {
 app.post("/registro", async (req, res) => {
     try {
         const { name, lastname, email, password, role, phone } = req.body;
-console.log(req.body);
+        console.log(req.body);
         // Generar UUID
         const id = uuidv4();
 
@@ -105,15 +105,35 @@ app.post("/login", async (req, res) => {
             });
         }
 
+        const [rows2] = await bd.query(
+            "SELECT id FROM pservicio WHERE id_usuario = ?",
+            [usuario.id]
+          );
+
+          console.log(rows2);
+          
+          
+          const negocio_creado = rows2.length > 0 ? 1 : 0;
+          
+          if (negocio_creado === 1) {
+            console.log("Negocio creado");
+          } else {
+            console.log("Negocio no creado");
+          }
+          
+        
+
         // 🔽 Guardar info en la sesión
         req.session.userId = usuario.id;
         req.session.role = usuario.rol;
+        req.session.negocio_creado = negocio_creado;
 
         // ✅ Enviar ID del usuario al frontend
         res.json({
             success: true,
             role: usuario.rol,
-            id: usuario.id // <--- este es el ID que puedes usar en el frontend
+            id: usuario.id, // <--- este es el ID que puedes usar en el frontend
+            negocio_creado: negocio_creado
         });
     } catch (error) {
         console.error("Error al iniciar sesión:", error);
@@ -142,6 +162,70 @@ app.post("/logout", (req, res) => {
             message: "Sesión cerrada correctamente"
         });
     });
+});
+
+
+//registro negocio
+
+app.post("/registroNegocio", async (req, res) => {
+    try {
+        const {
+            nombre_establecimiento,
+            telefono_establecimiento,
+            direccion,
+            hora_inicio,
+            hora_fin,
+            dias_trabajo,
+            
+        } = req.body.data;
+        const userid = req.body.userid;
+        
+        
+        if (!userid) {
+            return res.status(400).json({
+                success: false,
+                message: "El ID del usuario es requerido",
+            });
+        }
+
+        // Convertir a string si se recibe como array
+        const dias = Array.isArray(dias_trabajo)
+            ? dias_trabajo.join(",")
+            : typeof dias_trabajo === "string"
+                ? dias_trabajo
+                : null;
+       // console.log( req.body.data);
+
+        const [result] = await bd.execute(
+            `INSERT INTO pservicio 
+              (id, id_usuario, nombre_establecimiento, telefono_establecimiento, direccion, hora_inicio, hora_fin, dias_trabajo, negocio_creado, created_at, updated_at) 
+             VALUES 
+              (UUID(), ?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW())`,
+            [
+              userid,
+              nombre_establecimiento,
+              telefono_establecimiento,
+              direccion,
+              hora_inicio,
+              hora_fin,
+              dias,
+            ]
+          );          
+
+        res.json({
+            success: true,
+            message: "Negocio registrado exitosamente",
+            data: result,
+        });
+
+    } catch (error) {
+        console.error("Error al registrar el negocio:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error al registrar el negocio",
+            error: error.message,
+        });
+    }
 });
 
 

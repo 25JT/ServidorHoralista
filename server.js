@@ -108,20 +108,20 @@ app.post("/login", async (req, res) => {
         const [rows2] = await bd.query(
             "SELECT id FROM pservicio WHERE id_usuario = ?",
             [usuario.id]
-          );
+        );
 
-          console.log(rows2);
-          
-          
-          const negocio_creado = rows2.length > 0 ? 1 : 0;
-          
-          if (negocio_creado === 1) {
+        console.log(rows2);
+
+
+        const negocio_creado = rows2.length > 0 ? 1 : 0;
+
+        if (negocio_creado === 1) {
             console.log("Negocio creado");
-          } else {
+        } else {
             console.log("Negocio no creado");
-          }
-          
-        
+        }
+
+
 
         // 🔽 Guardar info en la sesión
         req.session.userId = usuario.id;
@@ -176,11 +176,13 @@ app.post("/registroNegocio", async (req, res) => {
             hora_inicio,
             hora_fin,
             dias_trabajo,
-            
+            tipo_servicio,
+            precio
+
         } = req.body.data;
         const userid = req.body.userid;
-        
-        
+
+
         if (!userid) {
             return res.status(400).json({
                 success: false,
@@ -194,23 +196,44 @@ app.post("/registroNegocio", async (req, res) => {
             : typeof dias_trabajo === "string"
                 ? dias_trabajo
                 : null;
-       // console.log( req.body.data);
+        console.log(req.body.data);
 
         const [result] = await bd.execute(
-            `INSERT INTO pservicio 
-              (id, id_usuario, nombre_establecimiento, telefono_establecimiento, direccion, hora_inicio, hora_fin, dias_trabajo, negocio_creado, created_at, updated_at) 
-             VALUES 
-              (UUID(), ?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW())`,
+            `INSERT INTO pservicio (
+  id, 
+  id_usuario, 
+  nombre_establecimiento, 
+  telefono_establecimiento, 
+  direccion, 
+  hora_inicio, 
+  hora_fin, 
+  dias_trabajo, 
+  created_at, 
+  updated_at, 
+  negocio_creado, 
+  Servicio, 
+  Precio
+) VALUES (
+  UUID(), 
+  ?, ?, ?, ?, ?, ?, ?, 
+  NOW(), 
+  NOW(), 
+  1, 
+  ?, ?
+);
+`,
             [
-              userid,
-              nombre_establecimiento,
-              telefono_establecimiento,
-              direccion,
-              hora_inicio,
-              hora_fin,
-              dias,
+                userid,
+                nombre_establecimiento,
+                telefono_establecimiento,
+                direccion,
+                hora_inicio,
+                hora_fin,
+                dias,
+                tipo_servicio,
+                precio
             ]
-          );          
+        );
 
         res.json({
             success: true,
@@ -223,6 +246,25 @@ app.post("/registroNegocio", async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Error al registrar el negocio",
+            error: error.message,
+        });
+    }
+});
+
+//Mostrar citas o Servicios disponibles
+
+app.get("/mostrarCitas", async (req, res) => {
+    try {
+        const [rows] = await bd.query("SELECT * FROM pservicio");
+        res.json({
+            success: true,
+            data: rows,
+        });
+    } catch (error) {
+        console.error("Error al mostrar las citas:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error al mostrar las citas",
             error: error.message,
         });
     }

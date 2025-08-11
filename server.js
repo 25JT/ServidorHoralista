@@ -177,7 +177,8 @@ app.post("/registroNegocio", async (req, res) => {
             hora_fin,
             dias_trabajo,
             tipo_servicio,
-            precio
+            precio,
+            mensaje
 
         } = req.body.data;
         const userid = req.body.userid;
@@ -212,7 +213,8 @@ app.post("/registroNegocio", async (req, res) => {
   updated_at, 
   negocio_creado, 
   Servicio, 
-  Precio
+  Precio,
+  mensaje
 ) VALUES (
   UUID(), 
   ?, ?, ?, ?, ?, ?, ?, 
@@ -231,7 +233,8 @@ app.post("/registroNegocio", async (req, res) => {
                 hora_fin,
                 dias,
                 tipo_servicio,
-                precio
+                precio,
+                mensaje
             ]
         );
 
@@ -270,4 +273,98 @@ app.get("/mostrarCitas", async (req, res) => {
     }
 });
 
+app.post("/datosUsuario", async (req, res) => {
+    try {      
+        const { userid } = req.body;
+        const [rows] = await bd.query("SELECT nombre, apellidos, telefono FROM `usuario` WHERE id =?", [userid]);
+        res.json({
+            success: true,
+            data: rows,
+        }); 
+    } catch (error) {
+        console.error("Error al mostrar los datos del usuario:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error al mostrar los datos del usuario",
+            error: error.message,
+        });
+    }
+});
 
+
+//agendar cita
+    
+app.post("/agendarcita", async (req, res) => {
+    try {
+      const { userid, id, fecha, hora, mensaje } = req.body;
+  
+      console.log(req.body);
+      if (!userid || !id || !fecha || !hora) {
+        return res.status(400).json({ success: false, message: "Faltan datos requeridos" });
+      }
+  
+      // 1️⃣ Verificar horario del barbero
+      const [servicio] = await bd.query(
+        "SELECT hora_inicio, hora_fin, dias_trabajo FROM pservicio WHERE id = ?",
+        [id]
+      );
+  
+      if (servicio.length === 0) {
+        return res.status(404).json({ success: false, message: "Servicio no encontrado" });
+      }
+  
+      const { hora_inicio, hora_fin, dias_trabajo } = servicio[0];
+      const [anio, mes, dia] = fecha.split("-");
+const diaSemana = new Date(anio, mes - 1, dia)
+  .toLocaleString("es-ES", { weekday: "long" })
+  .toLowerCase();
+  
+      if (!dias_trabajo.toLowerCase().includes(diaSemana)) {
+        return res.json({ success: false, fechaDisponible: false, message: "El " + diaSemana + " no esta disponible para el servicio, DIA DISPONIBLE " + dias_trabajo });
+      }
+  
+      if (hora < hora_inicio || hora > hora_fin) {
+        console.log(hora);
+        
+        return res.json({ success: false, horaDisponible: false, message: `Fuera del horario de trabajo. El horario disponible es de ${hora_inicio} a ${hora_fin}`, rango: { hora_inicio, hora_fin } });
+      }
+  
+      // 2️⃣ Verificar si hay cita exacta ocupando
+      const [ocupada] = await bd.query(
+        "SELECT * FROM agenda WHERE id_pservicio = ? AND fecha = ? AND hora = ? AND estado IN ('pendiente','confirmada')",
+        [id, fecha, hora]
+      );
+  
+      if (ocupada.length > 0) {
+        return res.json({ success: false, horaDisponible: false, message: "La hora ya está ocupada" });
+      }
+  
+      // 3️⃣ Verificar diferencia mínima de 1 hora con otras citas
+      const [otrasCitas] = await bd.query(
+        "SELECT hora FROM agenda WHERE id_pservicio = ? AND fecha = ? AND estado IN ('pendiente','confirmada')",
+        [id, fecha]
+      );
+  
+      const horaSeleccionada = new Date(`${fecha}T${hora}`);
+      for (let cita of otrasCitas) {
+        const horaExistente = new Date(`${fecha}T${cita.hora}`);
+        const diferenciaHoras = Math.abs((horaSeleccionada - horaExistente) / (1000 * 60 * 60));
+        if (diferenciaHoras < 1) {
+          return res.json({ success: false, horaDisponible: false, message: "Debe haber al menos 1 hora entre citas" });
+        }
+      }
+  
+      // 4️⃣ Insertar en agenda
+      await bd.query(
+       "INSERT INTO agenda (id, id_pservicio, id_usuario_cliente, fecha, hora, estado, notas) VALUES (UUID(), ?, ?, ?, ?,  'pendiente',?)",
+        [id, userid, fecha, hora, mensaje]
+      );
+  
+      res.json({ success: true, fechaDisponible: true, horaDisponible: true, message: "Cita agendada correctamente" });
+  
+    } catch (error) {
+      console.error("Error al agendar cita:", error);
+      res.status(500).json({ success: false, message: "Error interno", error: error.message });
+    }
+  });
+  

@@ -119,7 +119,91 @@ app.get("/verificar-email", async (req, res) => {
       return res.status(500).json({ success: false, message: "Error interno" });
     }
   });
+
+  //restablecer contraseña 
+  app.post("/restablecer-contrasena", async (req, res) => {
+    const { correo } = req.body;
+    
+    try {
+      const [rows] = await bd.execute(
+        "SELECT * FROM usuario WHERE correo = ?",
+        [correo]
+      );
+      
+      if (rows.length === 0) {
+        return res.status(400).json({ success: false, message: "Usuario no encontrado" });
+      }
+      
+      const usuario = rows[0];
+      
+      const tokenId = crypto.randomUUID();
+      const expiracion = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+      
+      await bd.execute(
+        "INSERT INTO token (id, id_usuario, tipo, usado, expiracion) VALUES (?, ?, 'reset_pass', 0, ?)",
+        [tokenId, usuario.id, expiracion]
+      );
+      
+      const linkRestablecimiento = `${RutaFront}/restablecer-contrasena?id_token=${tokenId}`;
+      
+      const mailOptions = {
+        from: process.env.correoUser,
+        to: correo,
+        subject: "Restablecimiento de contraseña - Mi App",
+        html: `
+          <h1>Restablecimiento de contraseña</h1>
+          <p>Has solicitado restablecer tu contraseña. Por favor, haz clic en el siguiente enlace:</p>
+          <a href="${linkRestablecimiento}" style="color: #ffffff; background-color: #007bff; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Restablecer contraseña</a>
+          <p>Si no solicitaste este restablecimiento, ignora este mensaje.</p>
+        `
+      };
+      
+      await transporter.sendMail(mailOptions);
+      
+      return res.json({ success: true, message: "Correo de restablecimiento enviado" });
+    } catch (error) {
+      console.error("Error al restablecer contraseña:", error);
+      return res.status(500).json({ success: false, message: "Error al restablecer contraseña" });
+    }
+  });
   
+
+  //validar token de restablecimiento 
+  app.post("/cambiar-password", async (req, res) => {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+        return res.status(400).json({ success: false, message: "Datos incompletos" });
+    }
+
+    try {
+        // Validar token
+        const [rows] = await bd.execute(
+            "SELECT * FROM token WHERE id = ? AND usado = 0 AND expiracion > NOW()",
+            [token]
+        );
+
+        if (rows.length === 0) {
+            return res.status(400).json({ success: false, message: "Token inválido o expirado" });
+        }
+
+        const userId = rows[0].id_usuario;
+
+        // Hashear nueva contraseña
+        const hashedPw = await bcrypt.hash(password, 10);
+
+        // Actualizar contraseña
+        await bd.execute("UPDATE usuario SET password = ? WHERE id = ?", [hashedPw, userId]);
+
+        // Marcar token como usado
+        await bd.execute("UPDATE token SET usado = 1 WHERE id = ?", [token]);
+
+        return res.json({ success: true, message: "Contraseña actualizada correctamente" });
+    } catch (error) {
+        console.error("Error al cambiar contraseña:", error);
+        return res.status(500).json({ success: false, message: "Error interno del servidor" });
+    }
+});
 
 //funciones de recordatorio 
 

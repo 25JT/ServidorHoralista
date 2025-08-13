@@ -4,7 +4,8 @@ import cors from "cors";
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import session from 'express-session';
-// import transporter from './correo.js'; no esta creado en esta version
+    import transporter from './correo.js';
+
 const saltos = 10;
 const ruta = "http://localhost:3000";
 
@@ -45,6 +46,87 @@ app.get("/", (req, res) => {
     res.json({ message: "Hola mundo" })
 });
 
+//funciones token con correo 
+const RutaFront = "http://localhost:4321";// cmabiar por el dominio del front 
+app.post("/TokenRegistro", async (req, res) => {
+    const { correo, id } = req.body;
+
+    try {
+        // 1️⃣ Generar token único
+        const tokenId = crypto.randomUUID();
+        const expiracion = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+
+        // 2️⃣ Guardar en tabla token (ajusta el valor de tipo según lo permitido en tu tabla)
+        await bd.query(
+            `INSERT INTO token (id, id_usuario, tipo, usado, expiracion) VALUES (?, ?, 'activate_account', 0, ?)`,
+            [tokenId, id, expiracion]
+        );
+
+        // 3️⃣ Preparar link de verificación
+        const linkVerificacion = `${RutaFront}/verificar-email?id_token=${tokenId}`;
+
+        // 4️⃣ Configurar correo
+        const mailOptions = {
+            from: process.env.correoUser,
+            to: correo,
+            subject: "Verifica tu correo - Mi App",
+            html: `
+                <h1>Bienvenido a Mi App</h1>
+                <p>Gracias por registrarte. Por favor, verifica tu correo haciendo clic en el siguiente enlace:</p>
+                <a href="${linkVerificacion}" style="color: #ffffff; background-color: #007bff; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Verificar mi cuenta</a>
+                <p>Si no te registraste, ignora este mensaje.</p>
+            `
+        };
+
+        // Envía el correo aquí (tu lógica actual)
+        await transporter.sendMail(mailOptions);
+
+        res.status(200).json({ message: "Token de verificación generado y correo enviado." });
+    } catch (error) {
+        console.error("Error al enviar correo de verificación:", error);
+        res.status(500).json({ error: "Error al enviar correo de verificación" });
+    }
+});
+
+//Validar tokne de registro 
+
+app.get("/verificar-email", async (req, res) => {
+    const { id_token } = req.query;
+  
+    if (!id_token) {
+      return res.status(400).json({ success: false, message: "Token no proporcionado" });
+    }
+  
+    try {
+      const [rows] = await bd.execute(
+        "SELECT * FROM token WHERE id = ? AND usado = 0 AND expiracion > NOW()",
+        [id_token]
+      );
+  
+      if (rows.length === 0) {
+        return res.status(400).json({ success: false, message: "Token inválido o expirado" });
+      }
+
+      const verificadoUsuario = 1 
+  
+      // Marcar como usado
+      await bd.execute("UPDATE token SET usado = 1 WHERE id = ?", [id_token]);
+      await bd.execute("UPDATE `usuario` SET `email_verificado` = ? WHERE `usuario`.`id` = ?", [verificadoUsuario, rows[0].id_usuario]);
+      
+      return res.json({ success: true, message: "Correo verificado correctamente" });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ success: false, message: "Error interno" });
+    }
+  });
+  
+
+//funciones de recordatorio 
+
+
+
+//Registro de usuario
+
 app.post("/registro", async (req, res) => {
     try {
         const { name, lastname, email, password, role, phone } = req.body;
@@ -63,7 +145,10 @@ app.post("/registro", async (req, res) => {
 
         res.json({
             success: true,
-            role: role
+            role: role,
+            id: id,
+            email:email,
+            
         });
 
     } catch (error) {

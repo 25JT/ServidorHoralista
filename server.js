@@ -81,7 +81,8 @@ app.post("/TokenRegistro", async (req, res) => {
         // Envía el correo aquí (tu lógica actual)
         await transporter.sendMail(mailOptions);
 
-        res.status(200).json({ message: "Token de verificación generado y correo enviado." });
+        
+        res.status(200).json({ message: "Por favor revisa tu correo para verificar tu cuenta" });
     } catch (error) {
         console.error("Error al enviar correo de verificación:", error);
         res.status(500).json({ error: "Error al enviar correo de verificación" });
@@ -215,6 +216,18 @@ app.post("/registro", async (req, res) => {
     try {
         const { name, lastname, email, password, role, phone } = req.body;
         console.log(req.body);
+        // Verificar si el correo existe
+        const [rows] = await bd.query(
+            "SELECT * FROM usuario WHERE correo = ?",
+            [email]
+        );
+        if (rows.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: "El correo electrónico ya está en uso. Por favor, elija otro o recupere la contraseña"
+            });
+        }
+
         // Generar UUID
         const id = uuidv4();
 
@@ -232,6 +245,8 @@ app.post("/registro", async (req, res) => {
             role: role,
             id: id,
             email:email,
+            
+            
             
         });
 
@@ -265,6 +280,15 @@ app.post("/login", async (req, res) => {
         }
 
         const usuario = rows[0];
+
+        const emailVerificado = usuario.email_verificado;
+
+        if (emailVerificado !== 1) {
+            return res.status(401).json({
+                success: false,
+                message: "Correo electrónico no verificado"
+            });
+        }
 
         const contrasenaCorrecta = await bcrypt.compare(contrasena, usuario.password);
         if (!contrasenaCorrecta) {
@@ -345,14 +369,11 @@ app.post("/registroNegocio", async (req, res) => {
             hora_inicio,
             hora_fin,
             dias_trabajo,
-            tipo_servicio,
-            precio,
-            mensaje
-
+            
         } = req.body.data;
         const userid = req.body.userid;
-
-
+        
+        
         if (!userid) {
             return res.status(400).json({
                 success: false,
@@ -366,46 +387,23 @@ app.post("/registroNegocio", async (req, res) => {
             : typeof dias_trabajo === "string"
                 ? dias_trabajo
                 : null;
-        console.log(req.body.data);
+       // console.log( req.body.data);
 
         const [result] = await bd.execute(
-            `INSERT INTO pservicio (
-  id, 
-  id_usuario, 
-  nombre_establecimiento, 
-  telefono_establecimiento, 
-  direccion, 
-  hora_inicio, 
-  hora_fin, 
-  dias_trabajo, 
-  created_at, 
-  updated_at, 
-  negocio_creado, 
-  Servicio, 
-  Precio,
-  mensaje
-) VALUES (
-  UUID(), 
-  ?, ?, ?, ?, ?, ?, ?, 
-  NOW(), 
-  NOW(), 
-  1, 
-  ?, ?
-);
-`,
+            `INSERT INTO pservicio 
+              (id, id_usuario, nombre_establecimiento, telefono_establecimiento, direccion, hora_inicio, hora_fin, dias_trabajo, negocio_creado, created_at, updated_at) 
+             VALUES 
+              (UUID(), ?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW())`,
             [
-                userid,
-                nombre_establecimiento,
-                telefono_establecimiento,
-                direccion,
-                hora_inicio,
-                hora_fin,
-                dias,
-                tipo_servicio,
-                precio,
-                mensaje
+              userid,
+              nombre_establecimiento,
+              telefono_establecimiento,
+              direccion,
+              hora_inicio,
+              hora_fin,
+              dias,
             ]
-        );
+          );          
 
         res.json({
             success: true,

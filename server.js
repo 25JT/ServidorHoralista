@@ -4,7 +4,7 @@ import cors from "cors";
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import session from 'express-session';
-    import transporter from './correo.js';
+import transporter from './correo.js';
 
 const saltos = 10;
 const ruta = "http://localhost:3000";
@@ -81,7 +81,7 @@ app.post("/TokenRegistro", async (req, res) => {
         // Envía el correo aquí (tu lógica actual)
         await transporter.sendMail(mailOptions);
 
-        
+
         res.status(200).json({ message: "Por favor revisa tu correo para verificar tu cuenta" });
     } catch (error) {
         console.error("Error al enviar correo de verificación:", error);
@@ -93,84 +93,84 @@ app.post("/TokenRegistro", async (req, res) => {
 
 app.get("/verificar-email", async (req, res) => {
     const { id_token } = req.query;
-  
+
     if (!id_token) {
-      return res.status(400).json({ success: false, message: "Token no proporcionado" });
+        return res.status(400).json({ success: false, message: "Token no proporcionado" });
     }
-  
-    try {
-      const [rows] = await bd.execute(
-        "SELECT * FROM token WHERE id = ? AND usado = 0 AND expiracion > NOW()",
-        [id_token]
-      );
-  
-      if (rows.length === 0) {
-        return res.status(400).json({ success: false, message: "Token inválido o expirado" });
-      }
 
-      const verificadoUsuario = 1 
-  
-      // Marcar como usado
-      await bd.execute("UPDATE token SET usado = 1 WHERE id = ?", [id_token]);
-      await bd.execute("UPDATE `usuario` SET `email_verificado` = ? WHERE `usuario`.`id` = ?", [verificadoUsuario, rows[0].id_usuario]);
-      
-      return res.json({ success: true, message: "Correo verificado correctamente" });
+    try {
+        const [rows] = await bd.execute(
+            "SELECT * FROM token WHERE id = ? AND usado = 0 AND expiracion > NOW()",
+            [id_token]
+        );
+
+        if (rows.length === 0) {
+            return res.status(400).json({ success: false, message: "Token inválido o expirado" });
+        }
+
+        const verificadoUsuario = 1
+
+        // Marcar como usado
+        await bd.execute("UPDATE token SET usado = 1 WHERE id = ?", [id_token]);
+        await bd.execute("UPDATE `usuario` SET `email_verificado` = ? WHERE `usuario`.`id` = ?", [verificadoUsuario, rows[0].id_usuario]);
+
+        return res.json({ success: true, message: "Correo verificado correctamente" });
     } catch (err) {
-      console.error(err);
-      return res.status(500).json({ success: false, message: "Error interno" });
+        console.error(err);
+        return res.status(500).json({ success: false, message: "Error interno" });
     }
-  });
+});
 
-  //restablecer contraseña 
-  app.post("/restablecer-contrasena", async (req, res) => {
+//restablecer contraseña 
+app.post("/restablecer-contrasena", async (req, res) => {
     const { correo } = req.body;
-    
+
     try {
-      const [rows] = await bd.execute(
-        "SELECT * FROM usuario WHERE correo = ?",
-        [correo]
-      );
-      
-      if (rows.length === 0) {
-        return res.status(400).json({ success: false, message: "Usuario no encontrado" });
-      }
-      
-      const usuario = rows[0];
-      
-      const tokenId = crypto.randomUUID();
-      const expiracion = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
-      
-      await bd.execute(
-        "INSERT INTO token (id, id_usuario, tipo, usado, expiracion) VALUES (?, ?, 'reset_pass', 0, ?)",
-        [tokenId, usuario.id, expiracion]
-      );
-      
-      const linkRestablecimiento = `${RutaFront}/restablecer-contrasena?id_token=${tokenId}`;
-      
-      const mailOptions = {
-        from: process.env.correoUser,
-        to: correo,
-        subject: "Restablecimiento de contraseña - Mi App",
-        html: `
+        const [rows] = await bd.execute(
+            "SELECT * FROM usuario WHERE correo = ?",
+            [correo]
+        );
+
+        if (rows.length === 0) {
+            return res.status(400).json({ success: false, message: "Usuario no encontrado" });
+        }
+
+        const usuario = rows[0];
+
+        const tokenId = crypto.randomUUID();
+        const expiracion = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+
+        await bd.execute(
+            "INSERT INTO token (id, id_usuario, tipo, usado, expiracion) VALUES (?, ?, 'reset_pass', 0, ?)",
+            [tokenId, usuario.id, expiracion]
+        );
+
+        const linkRestablecimiento = `${RutaFront}/restablecer-contrasena?id_token=${tokenId}`;
+
+        const mailOptions = {
+            from: process.env.correoUser,
+            to: correo,
+            subject: "Restablecimiento de contraseña - Mi App",
+            html: `
           <h1>Restablecimiento de contraseña</h1>
           <p>Has solicitado restablecer tu contraseña. Por favor, haz clic en el siguiente enlace:</p>
           <a href="${linkRestablecimiento}" style="color: #ffffff; background-color: #007bff; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Restablecer contraseña</a>
           <p>Si no solicitaste este restablecimiento, ignora este mensaje.</p>
         `
-      };
-      
-      await transporter.sendMail(mailOptions);
-      
-      return res.json({ success: true, message: "Correo de restablecimiento enviado" });
-    } catch (error) {
-      console.error("Error al restablecer contraseña:", error);
-      return res.status(500).json({ success: false, message: "Error al restablecer contraseña" });
-    }
-  });
-  
+        };
 
-  //validar token de restablecimiento 
-  app.post("/cambiar-password", async (req, res) => {
+        await transporter.sendMail(mailOptions);
+
+        return res.json({ success: true, message: "Correo de restablecimiento enviado" });
+    } catch (error) {
+        console.error("Error al restablecer contraseña:", error);
+        return res.status(500).json({ success: false, message: "Error al restablecer contraseña" });
+    }
+});
+
+
+//validar token de restablecimiento 
+app.post("/cambiar-password", async (req, res) => {
     const { token, password } = req.body;
 
     if (!token || !password) {
@@ -215,7 +215,7 @@ app.get("/verificar-email", async (req, res) => {
 app.post("/registro", async (req, res) => {
     try {
         const { name, lastname, email, password, role, phone } = req.body;
-        console.log(req.body);
+  //      console.log(req.body);
         // Verificar si el correo existe
         const [rows] = await bd.query(
             "SELECT * FROM usuario WHERE correo = ?",
@@ -244,10 +244,10 @@ app.post("/registro", async (req, res) => {
             success: true,
             role: role,
             id: id,
-            email:email,
-            
-            
-            
+            email: email,
+
+
+
         });
 
     } catch (error) {
@@ -303,15 +303,15 @@ app.post("/login", async (req, res) => {
             [usuario.id]
         );
 
-        console.log(rows2);
+    //    console.log(rows2);
 
 
         const negocio_creado = rows2.length > 0 ? 1 : 0;
 
         if (negocio_creado === 1) {
-            console.log("Negocio creado");
+    //        console.log("Negocio creado");
         } else {
-            console.log("Negocio no creado");
+   //         console.log("Negocio no creado");
         }
 
 
@@ -369,11 +369,14 @@ app.post("/registroNegocio", async (req, res) => {
             hora_inicio,
             hora_fin,
             dias_trabajo,
-            
+            tipo_servicio,
+            precio,
+
+
         } = req.body.data;
         const userid = req.body.userid;
-        
-        
+   //     console.log(req.body);
+
         if (!userid) {
             return res.status(400).json({
                 success: false,
@@ -387,23 +390,25 @@ app.post("/registroNegocio", async (req, res) => {
             : typeof dias_trabajo === "string"
                 ? dias_trabajo
                 : null;
-       // console.log( req.body.data);
+        // console.log( req.body.data);
 
         const [result] = await bd.execute(
             `INSERT INTO pservicio 
-              (id, id_usuario, nombre_establecimiento, telefono_establecimiento, direccion, hora_inicio, hora_fin, dias_trabajo, negocio_creado, created_at, updated_at) 
+              (id, id_usuario, nombre_establecimiento, telefono_establecimiento, direccion, hora_inicio, hora_fin, dias_trabajo, negocio_creado, Servicio,Precio, created_at, updated_at) 
              VALUES 
-              (UUID(), ?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW())`,
+              (UUID(), ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, NOW(), NOW())`,
             [
-              userid,
-              nombre_establecimiento,
-              telefono_establecimiento,
-              direccion,
-              hora_inicio,
-              hora_fin,
-              dias,
+                userid,
+                nombre_establecimiento,
+                telefono_establecimiento,
+                direccion,
+                hora_inicio,
+                hora_fin,
+                dias,
+                tipo_servicio,
+                precio,
             ]
-          );          
+        );
 
         res.json({
             success: true,
@@ -457,7 +462,74 @@ app.post("/datosUsuario", async (req, res) => {
         });
     }
 });
+//validar horas de citas
+app.post("/validarHoras", async (req, res) => {
+    try {
+        const { id, fecha } = req.body;
 
+        // 1. Validar entrada
+        if (!id || !fecha) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de servicio y fecha son requeridos"
+            });
+        }
+
+        // 2. Obtener rango de horas del servicio
+        const [servicio] = await bd.query(
+            "SELECT hora_inicio, hora_fin FROM pservicio WHERE id = ?",
+            [id]
+        );
+
+        if (servicio.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Servicio no encontrado"
+            });
+        }
+
+        // 3. Obtener horas ocupadas (incluyendo estados relevantes)
+        const [ocupadas] = await bd.query(
+            `SELECT hora FROM agenda 
+             WHERE id_pservicio = ? AND fecha = ? 
+             AND estado IN ('confirmada', 'pendiente', 'reservada')`,
+            [id, fecha]
+        );
+
+        // 4. Generar todas las horas posibles en el rango
+        const horaInicio = parseInt(servicio[0].hora_inicio.split(':')[0]);
+        const horaFin = parseInt(servicio[0].hora_fin.split(':')[0]);
+        
+        const todasHoras = [];
+        for (let h = horaInicio; h <= horaFin; h++) {
+            todasHoras.push(`${h.toString().padStart(2, '0')}:00:00`);
+        }
+
+        // 5. Filtrar horas disponibles
+        const horasOcupadas = ocupadas.map(c => c.hora);
+        const horasDisponibles = todasHoras.filter(hora => !horasOcupadas.includes(hora));
+
+        // 6. Respuesta mejorada
+        res.json({
+            success: true,
+            rango: servicio[0],
+            ocupadas: horasOcupadas,
+            disponibles: horasDisponibles
+        });
+
+    } catch (error) {
+        console.error("Error al validar las horas:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error interno al validar las horas",
+            error: error.message,
+        });
+    }
+});
+
+
+
+    
 
 //agendar cita
 
@@ -465,7 +537,7 @@ app.post("/agendarcita", async (req, res) => {
     try {
         const { userid, id, fecha, hora, mensaje } = req.body;
 
-        console.log(req.body);
+  //      console.log(req.body);
         if (!userid || !id || !fecha || !hora) {
             return res.status(400).json({ success: false, message: "Faltan datos requeridos" });
         }
@@ -491,7 +563,7 @@ app.post("/agendarcita", async (req, res) => {
         }
 
         if (hora < hora_inicio || hora > hora_fin) {
-            console.log(hora);
+       //     console.log(hora);
 
             return res.json({ success: false, horaDisponible: false, message: `Fuera del horario de trabajo. El horario disponible es de ${hora_inicio} a ${hora_fin}`, rango: { hora_inicio, hora_fin } });
         }
@@ -559,7 +631,7 @@ JOIN usuario AS u
     ON a.id_usuario_cliente = u.id
 WHERE a.id_pservicio = ?;
 `, [idPservicio]);
-        
+
 
         res.json({
             success: true,

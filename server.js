@@ -8,7 +8,7 @@ import transporter from './correo.js';
 
 const saltos = 10;
 const ruta = "http://localhost:3000";
-
+const RutaFront = "http://localhost:4321";// cmabiar por el dominio del front 
 const app = express();
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
@@ -18,6 +18,7 @@ app.use(express.json());
 app.listen(3000, () => {
     console.log("Server funciona en el puerto " + ruta);
 });
+
 
 // sesion
 
@@ -47,7 +48,7 @@ app.get("/", (req, res) => {
 });
 
 //funciones token con correo 
-const RutaFront = "http://localhost:4321";// cmabiar por el dominio del front 
+
 app.post("/TokenRegistro", async (req, res) => {
     const { correo, id } = req.body;
 
@@ -215,7 +216,7 @@ app.post("/cambiar-password", async (req, res) => {
 app.post("/registro", async (req, res) => {
     try {
         const { name, lastname, email, password, role, phone } = req.body;
-  //      console.log(req.body);
+        //      console.log(req.body);
         // Verificar si el correo existe
         const [rows] = await bd.query(
             "SELECT * FROM usuario WHERE correo = ?",
@@ -303,15 +304,15 @@ app.post("/login", async (req, res) => {
             [usuario.id]
         );
 
-    //    console.log(rows2);
+        //    console.log(rows2);
 
 
         const negocio_creado = rows2.length > 0 ? 1 : 0;
 
         if (negocio_creado === 1) {
-    //        console.log("Negocio creado");
+            //        console.log("Negocio creado");
         } else {
-   //         console.log("Negocio no creado");
+            //         console.log("Negocio no creado");
         }
 
 
@@ -375,7 +376,7 @@ app.post("/registroNegocio", async (req, res) => {
 
         } = req.body.data;
         const userid = req.body.userid;
-   //     console.log(req.body);
+        //     console.log(req.body);
 
         if (!userid) {
             return res.status(400).json({
@@ -499,7 +500,7 @@ app.post("/validarHoras", async (req, res) => {
         // 4. Generar todas las horas posibles en el rango
         const horaInicio = parseInt(servicio[0].hora_inicio.split(':')[0]);
         const horaFin = parseInt(servicio[0].hora_fin.split(':')[0]);
-        
+
         const todasHoras = [];
         for (let h = horaInicio; h <= horaFin; h++) {
             todasHoras.push(`${h.toString().padStart(2, '0')}:00:00`);
@@ -529,7 +530,7 @@ app.post("/validarHoras", async (req, res) => {
 
 
 
-    
+
 
 //agendar cita
 
@@ -537,7 +538,7 @@ app.post("/agendarcita", async (req, res) => {
     try {
         const { userid, id, fecha, hora, mensaje } = req.body;
 
-  //      console.log(req.body);
+        //      console.log(req.body);
         if (!userid || !id || !fecha || !hora) {
             return res.status(400).json({ success: false, message: "Faltan datos requeridos" });
         }
@@ -563,7 +564,7 @@ app.post("/agendarcita", async (req, res) => {
         }
 
         if (hora < hora_inicio || hora > hora_fin) {
-       //     console.log(hora);
+            //     console.log(hora);
 
             return res.json({ success: false, horaDisponible: false, message: `Fuera del horario de trabajo. El horario disponible es de ${hora_inicio} a ${hora_fin}`, rango: { hora_inicio, hora_fin } });
         }
@@ -648,7 +649,7 @@ ORDER BY a.fecha, a.hora;
 //Recordatorio de citas
 
 async function recordatorioCitas() {
-    
+
     try {
         const [rows] = await bd.query(`
 SELECT 
@@ -671,17 +672,23 @@ WHERE a.estado = 'pendiente'
         for (let row of rows) {
             const { id, fecha, hora, nombre, correo } = row;
 
-            const mensaje = `Hola ${nombre}, tienes una cita el ${fecha} a las ${hora}`;
+            const link = `${RutaFront}/Confirmarcita?id=${id}`;
 
+            const mensaje = `Hola ${nombre}, tienes una cita el ${fecha} a las ${hora}.
+        Por favor confirma tu asistencia en el siguiente enlace: ${link}`;
 
             await transporter.sendMail({
                 from: process.env.correoUser,
                 to: correo,
                 subject: "Recordatorio de cita",
-                text: mensaje,
+                text: mensaje, // Texto plano
+                html: `<p>Hola <b>${nombre}</b>,</p>
+                       <p>Tienes una cita el <b>${fecha}</b> a las <b>${hora}</b>.</p>
+                       <p>Por favor confirma tu asistencia haciendo clic en el siguiente botón:</p>
+                       <p><a href="${link}" style="background:#4CAF50;color:white;padding:10px 15px;text-decoration:none;border-radius:5px;">Confirmar cita</a></p>`
             });
 
-            // ✅ Actualizar el campo recordatorio_enviado
+            // Actualizar la agenda después de enviar
             await bd.query(
                 `UPDATE agenda 
                  SET recordatorio_enviado = 1, recordatorio_enviado_at = NOW() 
@@ -689,14 +696,70 @@ WHERE a.estado = 'pendiente'
                 [id]
             );
         }
+
     } catch (error) {
         console.log(error);
     }
 }
 
+//setInterval(recordatorioCitas, 60 * 60 * 1000); cADA 1 HORA
+
+//setInterval(recordatorioCitas, 30 * 60 * 1000); // Verificar cada 30 minutos 
 
 setInterval(recordatorioCitas, 10 * 1000); // cada 1 minuto
 
 
-//setInterval(recordatorioCitas, 60 * 60 * 1000); cADA 1 HORA
-//setInterval(recordatorioCitas, 30 * 60 * 1000); // Verificar cada 30 minutos 
+//confirmacion de cita usuario
+app.post("/confirmar-cita", async (req, res) => {
+    const { id } = req.body;
+
+    console.log(id);
+    try {
+        const [result] = await bd.query(
+            `UPDATE agenda 
+SET confirmada_por_cliente = 1, 
+    confirmada_at = NOW(), 
+    estado = 'confirmada'
+WHERE id = ?;
+`,
+            [id]
+        );
+
+        if (result.affectedRows > 0) {
+            res.json({ message: "Cita confirmada" });
+        } else {
+            res.status(404).json({ message: "Cita no encontrada" });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error en el servidor" });
+    }
+});
+
+//cancelar cita de usuario por su cliente
+ 
+app.post("/cancelar-cita", async (req, res) => {
+    const { id } = req.body;
+
+    console.log(id);
+    try {
+        const [result] = await bd.query(
+            `UPDATE agenda 
+SET confirmada_por_cliente = 1, 
+     confirmada_at = NOW(), 
+    estado = 'cancelada'
+WHERE id = ?;
+`,
+            [id]
+        );
+
+        if (result.affectedRows > 0) {
+            res.json({ message: "Cita cancelada" });
+        } else {
+            res.status(404).json({ message: "Cita no encontrada" });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error en el servidor" });
+    }
+});

@@ -620,16 +620,18 @@ app.post("/api/Reservas", async (req, res) => {
         }
 
         const idPservicio = id[0].id;
-        const [rows] = await bd.query(`SELECT 
+        const [rows] = await bd.query(`SELECT
     a.hora,
     a.fecha,
-    a.notas,
+    GROUP_CONCAT(a.notas) as notas,
     a.estado,
     u.nombre
 FROM agenda AS a
 JOIN usuario AS u
     ON a.id_usuario_cliente = u.id
-WHERE a.id_pservicio = ?;
+WHERE a.id_pservicio = ?
+GROUP BY a.fecha, a.hora, a.estado, u.nombre
+ORDER BY a.fecha, a.hora;
 `, [idPservicio]);
 
 
@@ -643,3 +645,58 @@ WHERE a.id_pservicio = ?;
     }
 })
 
+//Recordatorio de citas
+
+async function recordatorioCitas() {
+    
+    try {
+        const [rows] = await bd.query(`
+SELECT 
+    a.id,
+    DATE_FORMAT(a.fecha, '%d/%m/%Y') AS fecha,
+    TIME_FORMAT(a.hora, '%H:%i') AS hora,
+    u.nombre,
+    u.correo
+FROM agenda a
+INNER JOIN usuario u 
+    ON a.id_usuario_cliente = u.id
+WHERE a.estado = 'pendiente'
+  AND a.recordatorio_enviado = 0
+  AND TIMESTAMP(a.fecha, a.hora) >= NOW()
+  AND TIMESTAMP(a.fecha, a.hora) <= DATE_ADD(NOW(), INTERVAL 1 HOUR);
+
+
+        `);
+
+        for (let row of rows) {
+            const { id, fecha, hora, nombre, correo } = row;
+
+            const mensaje = `Hola ${nombre}, tienes una cita el ${fecha} a las ${hora}`;
+
+
+            await transporter.sendMail({
+                from: process.env.correoUser,
+                to: correo,
+                subject: "Recordatorio de cita",
+                text: mensaje,
+            });
+
+            // ✅ Actualizar el campo recordatorio_enviado
+            await bd.query(
+                `UPDATE agenda 
+                 SET recordatorio_enviado = 1, recordatorio_enviado_at = NOW() 
+                 WHERE id = ?`,
+                [id]
+            );
+        }
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+
+setInterval(recordatorioCitas, 10 * 1000); // cada 1 minuto
+
+
+//setInterval(recordatorioCitas, 60 * 60 * 1000); cADA 1 HORA
+//setInterval(recordatorioCitas, 30 * 60 * 1000); // Verificar cada 30 minutos 

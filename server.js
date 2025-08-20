@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import session from 'express-session';
 import transporter from './correo.js';
+import cron from "node-cron";
 
 const saltos = 10;
 const ruta = "http://localhost:3000";
@@ -615,27 +616,25 @@ app.post("/api/Reservas", async (req, res) => {
     try {
         const { userid } = req.body;
         const [id] = await bd.query("SELECT id FROM `pservicio` WHERE id_usuario = ?", [userid]);
-
         if (id == null) {
             return res.json({ success: false, message: "No se encontro ningun servicio" });
         }
-
         const idPservicio = id[0].id;
-        const [rows] = await bd.query(`SELECT
-    a.hora,
+        const [rows] = await bd.query(`   SELECT
+   a.hora,
     a.fecha,
     GROUP_CONCAT(a.notas) as notas,
     a.estado,
-    u.nombre
-FROM agenda AS a
-JOIN usuario AS u
+    u.nombre,
+     u.id  AS usuario_id,
+     a.id  AS agenda_id
+    FROM agenda AS a
+    JOIN usuario AS u
     ON a.id_usuario_cliente = u.id
-WHERE a.id_pservicio = ?
-GROUP BY a.fecha, a.hora, a.estado, u.nombre
-ORDER BY a.fecha, a.hora;
+    WHERE a.id_pservicio = ?
+    GROUP BY a.fecha, a.hora, a.estado, u.nombre
+    ORDER BY a.fecha, a.hora;
 `, [idPservicio]);
-
-
         res.json({
             success: true,
             data: rows,
@@ -645,68 +644,133 @@ ORDER BY a.fecha, a.hora;
         res.status(500).json({ success: false, message: "Error al mostrar las citas", error: error.message });
     }
 })
+//Canelar cita por el prestador de servicio
+app.put("/api/Reservas/cancelar", async (req, res) => {
+    try {
+        const { Agid , Useid } = req.body;
+        const [rows] = await bd.query("SELECT * FROM agenda WHERE id = ?", [Agid]);
+        if (rows.length === 0) {
+            return res.json({ success: false, message: "Cita no encontrada" });
+        }
+        await bd.query("UPDATE agenda SET estado = 'cancelada' , recordatorio_enviado = 1 WHERE id = ?", [Agid]);
+        res.json({ success: true, message: "Cita cancelada correctamente" });
 
-//Recordatorio de citas
+        const [usuario] = await bd.query("SELECT * FROM usuario WHERE id = ?", [Useid]);
+        
 
+        const mensaje = `Hola ${usuario[0].nombre}, tu cita ha sido cancelada Por el prestador de servicios.`;
+
+        await transporter.sendMail({
+            from: process.env.correoUser,
+            to: usuario[0].correo,
+            subject: "Cita cancelada",
+            text: mensaje,
+            html: `<p>Hola <b>${usuario[0].nombre}</b>,</p>
+             <p>Tu cita ha sido cancelada.</p>
+             <p>Lo sentimos pero el prestador de servicio no estara disponible en ese momento</p>`
+        });
+
+    } catch (error) {
+        console.error("Error al cancelar la cita:", error);
+        res.status(500).json({ success: false, message: "Error al cancelar la cita", error: error.message });
+    }
+})
+
+
+
+// =========================
+//  1. Recordatorios de citas
+// =========================
 async function recordatorioCitas() {
-
     try {
         const [rows] = await bd.query(`
-SELECT 
-    a.id,
-    DATE_FORMAT(a.fecha, '%d/%m/%Y') AS fecha,
-    TIME_FORMAT(a.hora, '%H:%i') AS hora,
-    u.nombre,
-    u.correo
-FROM agenda a
-INNER JOIN usuario u 
-    ON a.id_usuario_cliente = u.id
-WHERE a.estado = 'pendiente'
-  AND a.recordatorio_enviado = 0
-  AND TIMESTAMP(a.fecha, a.hora) >= NOW()
-  AND TIMESTAMP(a.fecha, a.hora) <= DATE_ADD(NOW(), INTERVAL 1 HOUR);
-
-
-        `);
+        SELECT 
+            a.id,
+            DATE_FORMAT(a.fecha, '%d/%m/%Y') AS fecha,
+            TIME_FORMAT(a.hora, '%H:%i') AS hora,
+            u.nombre,
+            u.correo
+        FROM agenda a
+        INNER JOIN usuario u 
+            ON a.id_usuario_cliente = u.id
+        WHERE a.estado = 'pendiente'
+          AND a.recordatorio_enviado = 0
+          AND TIMESTAMP(a.fecha, a.hora) >= NOW()
+          AND TIMESTAMP(a.fecha, a.hora) <= DATE_ADD(NOW(), INTERVAL 1 HOUR)
+      `);
 
         for (let row of rows) {
             const { id, fecha, hora, nombre, correo } = row;
-
             const link = `${RutaFront}/Confirmarcita?id=${id}`;
 
             const mensaje = `Hola ${nombre}, tienes una cita el ${fecha} a las ${hora}.
-        Por favor confirma tu asistencia en el siguiente enlace: ${link}`;
+  Por favor confirma tu asistencia en el siguiente enlace: ${link}`;
 
             await transporter.sendMail({
                 from: process.env.correoUser,
                 to: correo,
                 subject: "Recordatorio de cita",
-                text: mensaje, // Texto plano
+                text: mensaje,
                 html: `<p>Hola <b>${nombre}</b>,</p>
-                       <p>Tienes una cita el <b>${fecha}</b> a las <b>${hora}</b>.</p>
-                       <p>Por favor confirma tu asistencia haciendo clic en el siguiente botón:</p>
-                       <p><a href="${link}" style="background:#4CAF50;color:white;padding:10px 15px;text-decoration:none;border-radius:5px;">Confirmar cita</a></p>`
+                 <p>Tienes una cita el <b>${fecha}</b> a las <b>${hora}</b>.</p>
+                 <p>Por favor confirma tu asistencia haciendo clic en el siguiente botón:</p>
+                 <p><a href="${link}" style="background:#4CAF50;color:white;padding:10px 15px;text-decoration:none;border-radius:5px;">Confirmar cita</a></p>`
             });
 
             // Actualizar la agenda después de enviar
             await bd.query(
                 `UPDATE agenda 
-                 SET recordatorio_enviado = 1, recordatorio_enviado_at = NOW() 
-                 WHERE id = ?`,
+           SET recordatorio_enviado = 1, recordatorio_enviado_at = NOW() 
+           WHERE id = ?`,
                 [id]
             );
         }
 
+        if (rows.length > 0) {
+            console.log(`📩 Recordatorios enviados: ${rows.length}`);
+        }
+
     } catch (error) {
-        console.log(error);
+        console.error("❌ Error en recordatorioCitas:", error);
     }
 }
 
-//setInterval(recordatorioCitas, 60 * 60 * 1000); cADA 1 HORA
 
-//setInterval(recordatorioCitas, 30 * 60 * 1000); // Verificar cada 30 minutos 
+// =========================
+// 📌 2. Limpieza de tokens expirados
+// =========================
+async function limpiarTokens() {
+    try {
+        const [result] = await bd.execute(
+            "DELETE FROM token WHERE expiracion < NOW()"
+        );
+        if (result.affectedRows > 0) {
+            console.log(`🧹 Tokens eliminados: ${result.affectedRows}`);
+        }
+    } catch (err) {
+        console.error("❌ Error eliminando tokens:", err);
+    }
+}
 
-setInterval(recordatorioCitas, 10 * 1000); // cada 1 minuto
+
+// =========================
+// ⏰ Programar cron jobs
+// =========================
+
+// 📌 Recordatorios → cada hora en el minuto 0
+cron.schedule("0 * * * *", () => {
+    console.log("⏰ Ejecutando recordatorio de citas...");
+    recordatorioCitas();
+});
+
+// 📌 Limpieza de tokens → todos los días a las 2 AM
+cron.schedule("12 * * * *", () => {
+    console.log("🧹 Ejecutando limpieza de tokens...");
+    limpiarTokens();
+});
+
+console.log("✅ Cron jobs activos");
+
 
 
 //confirmacion de cita usuario
@@ -737,7 +801,7 @@ WHERE id = ?;
 });
 
 //cancelar cita de usuario por su cliente
- 
+
 app.post("/cancelar-cita", async (req, res) => {
     const { id } = req.body;
 

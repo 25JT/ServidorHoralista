@@ -430,7 +430,7 @@ app.post("/registroNegocio", async (req, res) => {
 
 //Mostrar citas o Servicios disponibles
 
-app.get("/mostrarCitas", async (req, res) => {
+app.get("/serviciosDisponibles", async (req, res) => {
     try {
         const [rows] = await bd.query("SELECT * FROM pservicio");
         res.json({
@@ -446,8 +446,31 @@ app.get("/mostrarCitas", async (req, res) => {
         });
     }
 });
+//citas en su agenda
+
+app.post("/mostrarCitas", async (req, res) => {
+ 
+    const userid = req.body.userid;
+
+    try {
+        const [rows] = await bd.query("SELECT * FROM agenda WHERE id_usuario_cliente = ?", [userid]);
+        res.json({
+            success: true,
+            data: rows,
+        });
+    } catch (error) {
+        console.error("Error al mostrar las citas:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error al mostrar las citas",
+            error: error.message,
+        });
+    }
+});
+
 
 app.post("/datosUsuario", async (req, res) => {
+
     try {
         const { userid } = req.body;
         const [rows] = await bd.query("SELECT nombre, apellidos, telefono FROM `usuario` WHERE id =?", [userid]);
@@ -758,7 +781,7 @@ async function limpiarTokens() {
 // =========================
 
 // 📌 Recordatorios → cada hora en el minuto 0
-cron.schedule("0 * * * *", () => {
+cron.schedule("11 * * * *", () => {
     console.log("⏰ Ejecutando recordatorio de citas...");
     recordatorioCitas();
 });

@@ -71,9 +71,9 @@ app.post("/TokenRegistro", async (req, res) => {
         const mailOptions = {
             from: process.env.correoUser,
             to: correo,
-            subject: "Verifica tu correo - Mi App",
+            subject: "Verifica tu correo - HORA LISTA",
             html: `
-                <h1>Bienvenido a Mi App</h1>
+                <h1>Bienvenido a HORA LISTA</h1>
                 <p>Gracias por registrarte. Por favor, verifica tu correo haciendo clic en el siguiente enlace:</p>
                 <a href="${linkVerificacion}" style="color: #ffffff; background-color: #007bff; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Verificar mi cuenta</a>
                 <p>Si no te registraste, ignora este mensaje.</p>
@@ -152,7 +152,7 @@ app.post("/restablecer-contrasena", async (req, res) => {
         const mailOptions = {
             from: process.env.correoUser,
             to: correo,
-            subject: "Restablecimiento de contraseña - Mi App",
+            subject: "Restablecimiento de contraseña - HORA LISTA",
             html: `
           <h1>Restablecimiento de contraseña</h1>
           <p>Has solicitado restablecer tu contraseña. Por favor, haz clic en el siguiente enlace:</p>
@@ -449,11 +449,20 @@ app.get("/serviciosDisponibles", async (req, res) => {
 //citas en su agenda
 
 app.post("/mostrarCitas", async (req, res) => {
- 
+
     const userid = req.body.userid;
 
     try {
-        const [rows] = await bd.query("SELECT * FROM agenda WHERE id_usuario_cliente = ?", [userid]);
+        const [rows] = await bd.query(`SELECT 
+    a.fecha,
+    a.hora,
+    a.estado,
+    p.nombre_establecimiento AS nombre_servicio
+    FROM agenda AS a
+    JOIN pservicio AS p ON a.id_pservicio = p.id
+    WHERE a.id_usuario_cliente = ?
+    AND a.fecha >= CURDATE();
+        `, [userid]);
         res.json({
             success: true,
             data: rows,
@@ -472,11 +481,14 @@ app.post("/mostrarCitas", async (req, res) => {
 app.post("/datosUsuario", async (req, res) => {
 
     try {
-        const { userid } = req.body;
-        const [rows] = await bd.query("SELECT nombre, apellidos, telefono FROM `usuario` WHERE id =?", [userid]);
+        const { userid, id } = req.body;
+        const [rows] = await bd.query("SELECT nombre, apellidos, telefono, correo FROM `usuario` WHERE id =?", [userid]);
+        const [rows2] = await bd.query("SELECT nombre_establecimiento, dias_trabajo, telefono_establecimiento, direccion FROM `pservicio` WHERE id =?", [id]);
         res.json({
+            rows,
+            rows2,
             success: true,
-            data: rows,
+            data: rows || rows2,
         });
     } catch (error) {
         console.error("Error al mostrar los datos del usuario:", error);
@@ -553,14 +565,11 @@ app.post("/validarHoras", async (req, res) => {
 });
 
 
-
-
-
 //agendar cita
 
 app.post("/agendarcita", async (req, res) => {
     try {
-        const { userid, id, fecha, hora, mensaje } = req.body;
+        const { userid, id, fecha, hora, mensaje, correo, nombre_establecimiento, telefono_establecimiento, nombre, apellido, direccion } = req.body;
 
         //      console.log(req.body);
         if (!userid || !id || !fecha || !hora) {
@@ -624,6 +633,38 @@ app.post("/agendarcita", async (req, res) => {
             [id, userid, fecha, hora, mensaje]
         );
 
+        //envio de correo
+        const link = `${RutaFront}/Confirmarcita?id=${id}`;
+
+        const mensaje2 = `GRACIAS POR AJENDAR SU CITA EN ${nombre_establecimiento} `;
+
+        await transporter.sendMail({
+            from: process.env.correoUser,
+            to: correo,
+            subject: `Tu cita ha sido agendada con éxito en ${nombre_establecimiento}`,
+            text: mensaje2,
+            html: `
+              <p>Hola <b>${nombre} ${apellido}</b>,</p>
+            
+              <p>¡Gracias por confiar en <b>${nombre_establecimiento}</b>! 
+              Hemos registrado tu cita correctamente para el día 
+              <b>${fecha}</b> a las <b>${hora}</b>.</p>
+              
+                <p><b>direccion del establecimiento: ${direccion}</b></p>            
+              <p><b>Teléfono de contacto del establecimiento:</b> ${telefono_establecimiento}</p>
+            
+              <p>📌 Recuerda: una hora antes de tu cita recibirás un correo recordatorio,
+              en el cual deberás confirmar tu asistencia.</p>
+            
+              <p>❌ En caso de que no puedas asistir, por favor cancela la cita desde el 
+              menú de tus citas para liberar el espacio a otros clientes.</p>
+            
+              <p>¡Te esperamos!<br>
+              <b>${nombre_establecimiento}</b></p>
+              `
+        });
+
+
         res.json({ success: true, fechaDisponible: true, horaDisponible: true, message: "Cita agendada correctamente" });
 
     } catch (error) {
@@ -670,7 +711,7 @@ app.post("/api/Reservas", async (req, res) => {
 //Canelar cita por el prestador de servicio
 app.put("/api/Reservas/cancelar", async (req, res) => {
     try {
-        const { Agid , Useid } = req.body;
+        const { Agid, Useid } = req.body;
         const [rows] = await bd.query("SELECT * FROM agenda WHERE id = ?", [Agid]);
         if (rows.length === 0) {
             return res.json({ success: false, message: "Cita no encontrada" });
@@ -679,7 +720,7 @@ app.put("/api/Reservas/cancelar", async (req, res) => {
         res.json({ success: true, message: "Cita cancelada correctamente" });
 
         const [usuario] = await bd.query("SELECT * FROM usuario WHERE id = ?", [Useid]);
-        
+
 
         const mensaje = `Hola ${usuario[0].nombre}, tu cita ha sido cancelada Por el prestador de servicios.`;
 
@@ -781,13 +822,13 @@ async function limpiarTokens() {
 // =========================
 
 // 📌 Recordatorios → cada hora en el minuto 0
-cron.schedule("11 * * * *", () => {
+cron.schedule("0 * * * *", () => {
     console.log("⏰ Ejecutando recordatorio de citas...");
     recordatorioCitas();
 });
 
 // 📌 Limpieza de tokens → todos los días a las 2 AM
-cron.schedule("12 * * * *", () => {
+cron.schedule("* 2 * * *", () => {
     console.log("🧹 Ejecutando limpieza de tokens...");
     limpiarTokens();
 });

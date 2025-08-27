@@ -1,5 +1,6 @@
 import express from "express";
 import bd from "./Bd.js";
+import crypto from "crypto";
 import cors from "cors";
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
@@ -11,9 +12,9 @@ const saltos = 10;
 const ruta = "http://localhost:3000";
 const RutaFront = "http://localhost:4321";// cmabiar por el dominio del front 
 const app = express();
-app.use(express.json());
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
 
 

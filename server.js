@@ -147,25 +147,28 @@ app.post("/restablecer-contrasena", async (req, res) => {
         await bd.execute(
             "INSERT INTO token (id, id_usuario, tipo, usado, expiracion) VALUES (?, ?, 'reset_pass', 0, ?)",
             [tokenId, usuario.id, expiracion]
-        );
-
-        const linkRestablecimiento = `${RutaFront}/restablecer-contrasena?id_token=${tokenId}`;
-
-        const mailOptions = {
+          );
+          
+          const linkRestablecimiento = `${RutaFront}/restablecer-contrasena?id_token=${tokenId}`;
+          
+          const mailOptions = {
             from: process.env.correoUser,
             to: correo,
             subject: "Restablecimiento de contraseña - HORA LISTA",
             html: `
-          <h1>Restablecimiento de contraseña</h1>
-          <p>Has solicitado restablecer tu contraseña. Por favor, haz clic en el siguiente enlace:</p>
-          <a href="${linkRestablecimiento}" style="color: #ffffff; background-color: #007bff; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Restablecer contraseña</a>
-          <p>Si no solicitaste este restablecimiento, ignora este mensaje.</p>
-        `
-        };
-
-        await createTransporter.sendMail(mailOptions);
-
-        return res.json({ success: true, message: "Correo de restablecimiento enviado" });
+              <h1>Restablecimiento de contraseña</h1>
+              <p>Has solicitado restablecer tu contraseña. Por favor, haz clic en el siguiente enlace:</p>
+              <a href="${linkRestablecimiento}" style="color: #ffffff; background-color: #007bff; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Restablecer contraseña</a>
+              <p>Si no solicitaste este restablecimiento, ignora este mensaje.</p>
+            `
+          };
+          
+          // ✅ crear el transporter primero
+          const transporter = await createTransporter();
+          await transporter.sendMail(mailOptions);
+          
+          return res.json({ success: true, message: "Correo de restablecimiento enviado" });
+          
     } catch (error) {
         console.error("Error al restablecer contraseña:", error);
         return res.status(500).json({ success: false, message: "Error al restablecer contraseña" });
@@ -574,107 +577,117 @@ app.post("/agendarcita", async (req, res) => {
     try {
         const { userid, id, fecha, hora, mensaje, correo, nombre_establecimiento, telefono_establecimiento, nombre, apellido, direccion } = req.body;
 
-        //      console.log(req.body);
         if (!userid || !id || !fecha || !hora) {
             return res.status(400).json({ success: false, message: "Faltan datos requeridos" });
         }
 
         // 1️ Verificar horario del barbero
-        const [servicio] = await bd.query(
+        const [servicioRows] = await bd.query(
             "SELECT hora_inicio, hora_fin, dias_trabajo FROM pservicio WHERE id = ?",
             [id]
         );
 
-        if (servicio.length === 0) {
+        if (servicioRows.length === 0) {
             return res.status(404).json({ success: false, message: "Servicio no encontrado" });
         }
 
-        const { hora_inicio, hora_fin, dias_trabajo } = servicio[0];
+        const { hora_inicio, hora_fin, dias_trabajo } = servicioRows[0];
+
         const [anio, mes, dia] = fecha.split("-");
         const diaSemana = new Date(anio, mes - 1, dia)
             .toLocaleString("es-ES", { weekday: "long" })
             .toLowerCase();
 
         if (!dias_trabajo.toLowerCase().includes(diaSemana)) {
-            return res.json({ success: false, fechaDisponible: false, message: "El " + diaSemana + " no esta disponible para el servicio, DIA DISPONIBLE " + dias_trabajo });
+            return res.json({
+                success: false,
+                fechaDisponible: false,
+                message: `El ${diaSemana} no está disponible. Días disponibles: ${dias_trabajo}`
+            });
         }
 
         if (hora < hora_inicio || hora > hora_fin) {
-            //     console.log(hora);
-
-            return res.json({ success: false, horaDisponible: false, message: `Fuera del horario de trabajo. El horario disponible es de ${hora_inicio} a ${hora_fin}`, rango: { hora_inicio, hora_fin } });
+            return res.json({
+                success: false,
+                horaDisponible: false,
+                message: `Fuera del horario de trabajo. El horario disponible es de ${hora_inicio} a ${hora_fin}`,
+                rango: { hora_inicio, hora_fin }
+            });
         }
 
-        // 2️Verificar si hay cita exacta ocupando
-        const [ocupada] = await bd.query(
-            "SELECT * FROM agenda WHERE id_pservicio = ? AND fecha = ? AND hora = ? AND estado IN ('pendiente','confirmada')",
+        // 2️ Verificar si ya hay cita en esa hora exacta
+        const [ocupadaRows] = await bd.query(
+            "SELECT 1 FROM agenda WHERE id_pservicio = ? AND fecha = ? AND hora = ? AND estado IN ('pendiente','confirmada')",
             [id, fecha, hora]
         );
 
-        if (ocupada.length > 0) {
+        if (ocupadaRows.length > 0) {
             return res.json({ success: false, horaDisponible: false, message: "La hora ya está ocupada" });
         }
 
         // 3️ Verificar diferencia mínima de 1 hora con otras citas
-        const [otrasCitas] = await bd.query(
+        const [otrasCitasRows] = await bd.query(
             "SELECT hora FROM agenda WHERE id_pservicio = ? AND fecha = ? AND estado IN ('pendiente','confirmada')",
             [id, fecha]
         );
 
         const horaSeleccionada = new Date(`${fecha}T${hora}`);
-        for (let cita of otrasCitas) {
+        for (let cita of otrasCitasRows) {
             const horaExistente = new Date(`${fecha}T${cita.hora}`);
             const diferenciaHoras = Math.abs((horaSeleccionada - horaExistente) / (1000 * 60 * 60));
             if (diferenciaHoras < 1) {
-                return res.json({ success: false, horaDisponible: false, message: "Debe haber al menos 1 hora entre citas" });
+                return res.json({
+                    success: false,
+                    horaDisponible: false,
+                    message: "Debe haber al menos 1 hora entre citas"
+                });
             }
         }
 
         // 4️ Insertar en agenda
         await bd.query(
-            "INSERT INTO agenda (id, id_pservicio, id_usuario_cliente, fecha, hora, estado, notas) VALUES (UUID(), ?, ?, ?, ?,  'pendiente',?)",
-            [id, userid, fecha, hora, mensaje]
+            "INSERT INTO agenda (id, id_pservicio, id_usuario_cliente, fecha, hora, estado, notas) VALUES (UUID(), ?, ?, ?, ?, 'pendiente', ?)",
+            [id, userid, fecha, hora, mensaje || ""]
         );
 
-        //envio de correo
+        // Envío de correo
         const link = `${RutaFront}/Confirmarcita?id=${id}`;
+        const mensaje2 = `Gracias por agendar tu cita en ${nombre_establecimiento}`;
 
-        const mensaje2 = `GRACIAS POR AJENDAR SU CITA EN ${nombre_establecimiento} `;
+        // ✅ Corrección
+        const transporter = await createTransporter();
 
-        await createTransporter.sendMail({
+        await transporter.sendMail({
             from: process.env.correoUser,
             to: correo,
             subject: `Tu cita ha sido agendada con éxito en ${nombre_establecimiento}`,
             text: mensaje2,
             html: `
-              <p>Hola <b>${nombre} ${apellido}</b>,</p>
-            
-              <p>¡Gracias por confiar en <b>${nombre_establecimiento}</b>! 
-              Hemos registrado tu cita correctamente para el día 
-              <b>${fecha}</b> a las <b>${hora}</b>.</p>
-              
-                <p><b>direccion del establecimiento: ${direccion}</b></p>            
-              <p><b>Teléfono de contacto del establecimiento:</b> ${telefono_establecimiento}</p>
-            
-              <p>📌 Recuerda: una hora antes de tu cita recibirás un correo recordatorio,
-              en el cual deberás confirmar tu asistencia.</p>
-            
-              <p>❌ En caso de que no puedas asistir, por favor cancela la cita desde el 
-              menú de tus citas para liberar el espacio a otros clientes.</p>
-            
-              <p>¡Te esperamos!<br>
-              <b>${nombre_establecimiento}</b></p>
-              `
+    <p>Hola <b>${nombre} ${apellido}</b>,</p>
+    <p>¡Gracias por confiar en <b>${nombre_establecimiento}</b>! 
+    Hemos registrado tu cita para el <b>${fecha}</b> a las <b>${hora}</b>.</p>
+    <p><b>Dirección:</b> ${direccion}</p>
+    <p><b>Teléfono:</b> ${telefono_establecimiento}</p>
+    <p>📌 Recuerda: una hora antes de tu cita recibirás un correo recordatorio para confirmar tu asistencia.</p>
+    <p>❌ Si no puedes asistir, cancela la cita desde el menú de tus citas.</p>
+    <p>¡Te esperamos!<br><b>${nombre_establecimiento}</b></p>
+  `,
         });
 
-
-        res.json({ success: true, fechaDisponible: true, horaDisponible: true, message: "Cita agendada correctamente" });
+        res.json({
+            success: true,
+            fechaDisponible: true,
+            horaDisponible: true,
+            message: "Cita agendada correctamente"
+        });
+        return;
 
     } catch (error) {
         console.error("Error al agendar cita:", error);
         res.status(500).json({ success: false, message: "Error interno", error: error.message });
     }
 });
+
 
 
 //Mostrar citas al prestador de servicio
@@ -715,27 +728,34 @@ app.post("/api/Reservas", async (req, res) => {
 app.put("/api/Reservas/cancelar", async (req, res) => {
     try {
         const { Agid, Useid } = req.body;
+
         const [rows] = await bd.query("SELECT * FROM agenda WHERE id = ?", [Agid]);
         if (rows.length === 0) {
             return res.json({ success: false, message: "Cita no encontrada" });
         }
+        
         await bd.query("UPDATE agenda SET estado = 'cancelada' , recordatorio_enviado = 1 WHERE id = ?", [Agid]);
         res.json({ success: true, message: "Cita cancelada correctamente" });
-
+        
         const [usuario] = await bd.query("SELECT * FROM usuario WHERE id = ?", [Useid]);
-
-
-        const mensaje = `Hola ${usuario[0].nombre}, tu cita ha sido cancelada Por el prestador de servicios.`;
-
-        await createTransporter.sendMail({
+        
+        const mensaje = `Hola ${usuario[0].nombre}, tu cita ha sido cancelada por el prestador de servicios.`;
+        
+        // ✅ Crear el transporter primero
+        const transporter = await createTransporter();
+        
+        await transporter.sendMail({
             from: process.env.correoUser,
             to: usuario[0].correo,
             subject: "Cita cancelada",
             text: mensaje,
-            html: `<p>Hola <b>${usuario[0].nombre}</b>,</p>
-             <p>Tu cita ha sido cancelada.</p>
-             <p>Lo sentimos pero el prestador de servicio no estara disponible en ese momento</p>`
+            html: `
+              <p>Hola <b>${usuario[0].nombre}</b>,</p>
+              <p>Tu cita ha sido cancelada.</p>
+              <p>Lo sentimos pero el prestador de servicio no estará disponible en ese momento.</p>
+            `
         });
+        
 
     } catch (error) {
         console.error("Error al cancelar la cita:", error);
@@ -773,7 +793,10 @@ async function recordatorioCitas() {
             const mensaje = `Hola ${nombre}, tienes una cita el ${fecha} a las ${hora}.
   Por favor confirma tu asistencia en el siguiente enlace: ${link}`;
 
-            await createTransporter.sendMail({
+            // ✅ Crear el transporter primero
+            const transporter = await createTransporter();
+            
+            await transporter.sendMail({
                 from: process.env.correoUser,
                 to: correo,
                 subject: "Recordatorio de cita",
@@ -996,16 +1019,19 @@ app.post("/cancelar-cita", async (req, res) => {
 
         // Enviar correos (no bloquear la respuesta principal)
         try {
+            const transporter = await createTransporter();
+        
             await Promise.all([
-                createTransporter.sendMail(mensajeCliente),
-                createTransporter.sendMail(mensajePrestador)
+                transporter.sendMail(mensajeCliente),
+                transporter.sendMail(mensajePrestador)
             ]);
+        
             console.log("✅ Correos enviados exitosamente");
         } catch (emailError) {
             console.error("Error enviando correos:", emailError);
             // No fallar la operación principal por errores de correo
         }
-
+        
         res.json({ success: true, message: "Cita cancelada exitosamente" });
 
     } catch (error) {

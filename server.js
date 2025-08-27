@@ -5,7 +5,7 @@ import cors from "cors";
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import session from 'express-session';
-import transporter from './correo.js';
+import createTransporter from './correo.js';
 import cron from "node-cron";
 
 const saltos = 10;
@@ -83,8 +83,8 @@ app.post("/TokenRegistro", async (req, res) => {
         };
 
         // Envía el correo aquí (tu lógica actual)
+        const transporter = await createTransporter();
         await transporter.sendMail(mailOptions);
-
 
         res.status(200).json({ message: "Por favor revisa tu correo para verificar tu cuenta" });
     } catch (error) {
@@ -163,7 +163,7 @@ app.post("/restablecer-contrasena", async (req, res) => {
         `
         };
 
-        await transporter.sendMail(mailOptions);
+        await createTransporter.sendMail(mailOptions);
 
         return res.json({ success: true, message: "Correo de restablecimiento enviado" });
     } catch (error) {
@@ -641,7 +641,7 @@ app.post("/agendarcita", async (req, res) => {
 
         const mensaje2 = `GRACIAS POR AJENDAR SU CITA EN ${nombre_establecimiento} `;
 
-        await transporter.sendMail({
+        await createTransporter.sendMail({
             from: process.env.correoUser,
             to: correo,
             subject: `Tu cita ha sido agendada con éxito en ${nombre_establecimiento}`,
@@ -727,7 +727,7 @@ app.put("/api/Reservas/cancelar", async (req, res) => {
 
         const mensaje = `Hola ${usuario[0].nombre}, tu cita ha sido cancelada Por el prestador de servicios.`;
 
-        await transporter.sendMail({
+        await createTransporter.sendMail({
             from: process.env.correoUser,
             to: usuario[0].correo,
             subject: "Cita cancelada",
@@ -773,7 +773,7 @@ async function recordatorioCitas() {
             const mensaje = `Hola ${nombre}, tienes una cita el ${fecha} a las ${hora}.
   Por favor confirma tu asistencia en el siguiente enlace: ${link}`;
 
-            await transporter.sendMail({
+            await createTransporter.sendMail({
                 from: process.env.correoUser,
                 to: correo,
                 subject: "Recordatorio de cita",
@@ -997,8 +997,8 @@ app.post("/cancelar-cita", async (req, res) => {
         // Enviar correos (no bloquear la respuesta principal)
         try {
             await Promise.all([
-                transporter.sendMail(mensajeCliente),
-                transporter.sendMail(mensajePrestador)
+                createTransporter.sendMail(mensajeCliente),
+                createTransporter.sendMail(mensajePrestador)
             ]);
             console.log("✅ Correos enviados exitosamente");
         } catch (emailError) {

@@ -10,7 +10,8 @@ export const bd = await mysql.createConnection({
     database: process.env.database,
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0
+    queueLimit: 0,
+    timezone: '-05:00'
 });
 
 bd.connect((err) => {

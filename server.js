@@ -11,14 +11,10 @@ const saltos = 10;
 const ruta = "http://localhost:3000";
 const RutaFront = "http://localhost:4321";// cmabiar por el dominio del front 
 const app = express();
-app.use(cors({
-    origin: ["http://localhost:4321", "https://h-beta-blush.vercel.app"],
-    credentials: true
-}
-
-));
-app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(cors());
+app.use(express.urlencoded({ extended: true }));
+
 
 
 app.listen(3000, () => {

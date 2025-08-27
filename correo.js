@@ -1,4 +1,3 @@
-import nodemailer from "nodemailer"; 
 import { google } from "googleapis";
 import dotenv from "dotenv";
 dotenv.config();
@@ -6,7 +5,7 @@ dotenv.config();
 const oAuth2Client = new google.auth.OAuth2(
   process.env.client_id,
   process.env.client_secret,
-  process.env.redirect_uri // 👈 obligatorio
+  process.env.redirect_uri
 );
 
 oAuth2Client.setCredentials({
@@ -14,21 +13,37 @@ oAuth2Client.setCredentials({
 });
 
 async function createTransporter() {
-  const accessToken = await oAuth2Client.getAccessToken();
+  const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
 
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      type: "OAuth2",
-      user: process.env.correoUser,
-      clientId: process.env.client_id,
-      clientSecret: process.env.client_secret,
-      refreshToken: process.env.refresh_token,
-      accessToken: accessToken.token, // 👈 importante .token
-    },
-  });
+  // Esta función reemplaza al "sendMail" de nodemailer
+  async function sendMail({ to, subject, text, html }) {
+    const encodedMessage = Buffer.from(
+      [
+        `From: ${process.env.correoUser}`,
+        `To: ${to}`,
+        `Subject: ${subject}`,
+        "MIME-Version: 1.0",
+        "Content-Type: text/html; charset=utf-8",
+        "",
+        html || text,
+      ].join("\n")
+    )
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
 
-  return transporter;
+    const res = await gmail.users.messages.send({
+      userId: "me",
+      requestBody: {
+        raw: encodedMessage,
+      },
+    });
+
+    return res.data;
+  }
+
+  return { sendMail };
 }
 
 export default createTransporter;

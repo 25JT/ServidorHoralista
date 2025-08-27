@@ -464,10 +464,12 @@ app.post("/mostrarCitas", async (req, res) => {
     a.hora,
     a.estado,
     p.nombre_establecimiento AS nombre_servicio
-    FROM agenda AS a
-    JOIN pservicio AS p ON a.id_pservicio = p.id
-    WHERE a.id_usuario_cliente = ?
-    AND a.fecha >= CURDATE();
+FROM agenda AS a
+JOIN pservicio AS p 
+    ON a.id_pservicio = p.id
+WHERE a.id_usuario_cliente = ?
+  AND a.fecha >= CURDATE()
+ORDER BY a.fecha ASC, a.hora ASC;
         `, [userid]);
         res.json({
             success: true,

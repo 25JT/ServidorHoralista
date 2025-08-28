@@ -21,7 +21,11 @@ app.use(express.json());
 app.listen(3000, () => {
     console.log("Server funciona en el puerto " + ruta);
 });
-console.log("Hora actual del servidor:", new Date().toString());
+
+// Ejecutar cada minuto
+cron.schedule('* * * * *', () => {
+    console.log("Hora actual del servidor:", new Date().toString());
+});
 
 
 // sesion
@@ -704,19 +708,20 @@ app.post("/api/Reservas", async (req, res) => {
         }
         const idPservicio = id[0].id;
         const [rows] = await bd.query(`   SELECT
-   a.hora,
+    a.hora,
     a.fecha,
     GROUP_CONCAT(a.notas) as notas,
     a.estado,
     u.nombre,
-     u.id  AS usuario_id,
-     a.id  AS agenda_id
-    FROM agenda AS a
-    JOIN usuario AS u
+    ANY_VALUE(u.id) AS usuario_id,
+    ANY_VALUE(a.id) AS agenda_id
+FROM agenda AS a
+JOIN usuario AS u
     ON a.id_usuario_cliente = u.id
-    WHERE a.id_pservicio = ?
-    GROUP BY a.fecha, a.hora, a.estado, u.nombre
-    ORDER BY a.fecha, a.hora;
+WHERE a.id_pservicio = ?
+GROUP BY a.fecha, a.hora, a.estado, u.nombre
+ORDER BY a.fecha, a.hora;
+
 `, [idPservicio]);
         res.json({
             success: true,

@@ -10,7 +10,7 @@ import cron from "node-cron";
 
 const saltos = 10;
 const ruta = "http://localhost:3000";
-const RutaFront = "http://localhost:4321";// cmabiar por el dominio del front 
+const RutaFront = "https://frolicking-bienenstitch-17272e.netlify.app";// cmabiar por el dominio del front 
 const app = express();
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));

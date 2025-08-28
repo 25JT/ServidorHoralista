@@ -21,6 +21,7 @@ app.use(express.json());
 app.listen(3000, () => {
     console.log("Server funciona en el puerto " + ruta);
 });
+console.log("Hora actual del servidor:", new Date().toString());
 
 
 // sesion

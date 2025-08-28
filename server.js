@@ -779,19 +779,20 @@ app.put("/api/Reservas/cancelar", async (req, res) => {
 async function recordatorioCitas() {
     try {
         const [rows] = await bd.query(`
-        SELECT 
-            a.id,
-            DATE_FORMAT(a.fecha, '%d/%m/%Y') AS fecha,
-            TIME_FORMAT(a.hora, '%H:%i') AS hora,
-            u.nombre,
-            u.correo
-        FROM agenda a
-        INNER JOIN usuario u 
-            ON a.id_usuario_cliente = u.id
-        WHERE a.estado = 'pendiente'
-          AND a.recordatorio_enviado = 0
-          AND TIMESTAMP(a.fecha, a.hora) >= NOW()
-          AND TIMESTAMP(a.fecha, a.hora) <= DATE_ADD(NOW(), INTERVAL 1 HOUR)
+	SELECT 
+    a.id,
+    DATE_FORMAT(a.fecha, '%d/%m/%Y') AS fecha,
+    TIME_FORMAT(a.hora, '%H:%i') AS hora,
+    u.nombre,
+    u.correo
+FROM agenda a
+INNER JOIN usuario u 
+    ON a.id_usuario_cliente = u.id
+WHERE a.estado = 'pendiente'
+  AND a.recordatorio_enviado = 0
+  AND TIMESTAMP(a.fecha, a.hora) 
+      BETWEEN CONVERT_TZ(NOW(), '+00:00', '-05:00') 
+          AND CONVERT_TZ(DATE_ADD(NOW(), INTERVAL 1 HOUR), '+00:00', '-05:00');
       `);
 
         for (let row of rows) {

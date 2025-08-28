@@ -22,12 +22,6 @@ app.listen(3000, () => {
     console.log("Server funciona en el puerto " + ruta);
 });
 
-// Ejecutar cada minuto
-cron.schedule('* * * * *', () => {
-    console.log("Hora actual del servidor:", new Date().toString());
-});
-
-
 // sesion
 
 
@@ -857,7 +851,7 @@ async function limpiarTokens() {
 // =========================
 
 // 📌 Recordatorios → cada hora en el minuto 0
-cron.schedule("* * * * *", () => {
+cron.schedule("0 * * * *", () => {
     console.log("⏰ Ejecutando recordatorio de citas...");
     recordatorioCitas();
 });

@@ -856,7 +856,7 @@ cron.schedule("0 * * * *", () => {
 });
 
 // 📌 Limpieza de tokens → todos los días a las 2 AM
-cron.schedule("* 2 * * *", () => {
+cron.schedule("0 2 * * *", () => {
     console.log("🧹 Ejecutando limpieza de tokens...");
     limpiarTokens();
 });

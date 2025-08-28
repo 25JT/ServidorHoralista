@@ -856,7 +856,7 @@ async function limpiarTokens() {
 // =========================
 
 // 📌 Recordatorios → cada hora en el minuto 0
-cron.schedule("17 * * * *", () => {
+cron.schedule("* * * * *", () => {
     console.log("⏰ Ejecutando recordatorio de citas...");
     recordatorioCitas();
 });

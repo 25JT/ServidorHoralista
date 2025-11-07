@@ -8,12 +8,9 @@ import session from 'express-session';
 import createTransporter from './correo.js';
 import cron from "node-cron";
 
-
-const { sendMail } = await createTransporter();
 const saltos = 10;
 const ruta = "http://localhost:3000";
 const RutaFront = "https://frolicking-bienenstitch-17272e.netlify.app";// cmabiar por el dominio del front 
-
 const app = express();
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
@@ -56,7 +53,7 @@ app.get("/", (req, res) => {
 
 app.post("/TokenRegistro", async (req, res) => {
     const { correo, id } = req.body;
-    console.log(req.body);
+
     try {
         // 1️⃣ Generar token único
         const tokenId = crypto.randomUUID();
@@ -85,9 +82,9 @@ app.post("/TokenRegistro", async (req, res) => {
         };
 
         // Envía el correo aquí (tu lógica actual)
-        
-        await sendMail(mailOptions);
-        console.log("Correo enviado");
+        const transporter = await createTransporter();
+        await transporter.sendMail(mailOptions);
+
         res.status(200).json({ message: "Por favor revisa tu correo para verificar tu cuenta" });
     } catch (error) {
         console.error("Error al enviar correo de verificación:", error);

@@ -1,47 +1,30 @@
-import { google } from "googleapis";
+import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 dotenv.config();
 
-const oAuth2Client = new google.auth.OAuth2(
-  process.env.client_id,
-  process.env.client_secret,
-  process.env.redirect_uri
-);
-
-oAuth2Client.setCredentials({
-  refresh_token: process.env.refresh_token,
-});
-
 async function createTransporter() {
-  const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
+  // Transporter usando App Password de Gmail
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.correoUser,   // tu correo Gmail
+      pass: process.env.correoPass, // tu App Password de 16 caracteres
+    },
+  });
 
-  // Esta función reemplaza al "sendMail" de nodemailer
+  // Mantengo tu misma función sendMail
   async function sendMail({ to, subject, text, html }) {
-    const encodedMessage = Buffer.from(
-      [
-        `From: ${process.env.correoUser}`,
-        `To: ${to}`,
-        `Subject: =?UTF-8?B?${Buffer.from(subject).toString("base64")}?=`, // asunto codificado en UTF-8 base64
-        "MIME-Version: 1.0",
-        "Content-Type: text/html; charset=UTF-8", // aquí forzamos utf-8
-        "",
-        
-        html || text,
-      ].join("\n")
-    )
-      .toString("base64")
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/, "");
+    const mailOptions = {
+      from: process.env.correoUser,
+      to,
+      subject,
+      text,
+      html,
+    };
 
-    const res = await gmail.users.messages.send({
-      userId: "me",
-      requestBody: {
-        raw: encodedMessage,
-      },
-    });
-
-    return res.data;
+    // Enviamos el correo
+    const res = await transporter.sendMail(mailOptions);
+    return res;
   }
 
   return { sendMail };

@@ -5,10 +5,16 @@ dotenv.config();
 async function createTransporter() {
   // Transporter usando App Password de Gmail
   const transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
     auth: {
-      user: process.env.correoUser,   // tu correo Gmail
-      pass: process.env.correoPass, // tu App Password de 16 caracteres
+      user: process.env.correoUser,
+      pass: process.env.correoPass,
+    },
+    tls: {
+      minVersion: "TLSv1",
+      rejectUnauthorized: false,
     },
   });
 

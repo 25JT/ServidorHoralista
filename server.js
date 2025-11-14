@@ -870,6 +870,11 @@ console.log("✅ Cron jobs activos");
 app.post("/confirmar-cita", async (req, res) => {
     const { id } = req.body;
 
+    const validacion = await bd.query(
+        `select confirmada_por_cliente , id from horalista.agenda where id = ?;`,
+        [id]
+    );
+    console.log(validacion);
     console.log(id);
     try {
         const [result] = await bd.query(
@@ -881,10 +886,7 @@ WHERE id = ?;
 `,
             [id]
         );
-        const validacion = await bd.query(
-            `select confirmada_por_cliente , id from horalista.agenda where id = ?;`,
-            [id]
-        );
+  
         if(validacion[0].confirmada_por_cliente === 1){
             return res.status(400).json({ success: false, message: "La cita ya ha sido confirmada" });
         }
@@ -902,7 +904,11 @@ WHERE id = ?;
 //cancelar cita de usuario por su cliente
 app.post("/cancelar-cita", async (req, res) => {
     const { id } = req.body;
-
+    
+  const validacion = await bd.query(
+            `select confirmada_por_cliente , id from horalista.agenda where id = ?;`,
+            [id]
+        );
     console.log("ID recibido para cancelar:", id);
 
     try {
@@ -929,10 +935,7 @@ app.post("/cancelar-cita", async (req, res) => {
             [id]
         );
 
-        const validacion = await bd.query(
-            `select confirmada_por_cliente , id from horalista.agenda where id = ?;`,
-            [id]
-        );
+      
         if(validacion[0].confirmada_por_cliente === 1){
             return res.status(400).json({ success: false, message: "La cita ya ha sido cancelada" });
         }

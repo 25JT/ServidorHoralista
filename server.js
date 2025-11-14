@@ -881,7 +881,13 @@ WHERE id = ?;
 `,
             [id]
         );
-
+        const validacion = await bd.query(
+            `select confirmada_por_cliente , id from horalista.agenda where id = ?;`,
+            [id]
+        );
+        if(validacion[0].confirmada_por_cliente === 1){
+            return res.status(400).json({ success: false, message: "La cita ya ha sido confirmada" });
+        }
         if (result.affectedRows > 0) {
             res.json({ success: true, message: "Cita confirmada" });
         } else {
@@ -923,6 +929,13 @@ app.post("/cancelar-cita", async (req, res) => {
             [id]
         );
 
+        const validacion = await bd.query(
+            `select confirmada_por_cliente , id from horalista.agenda where id = ?;`,
+            [id]
+        );
+        if(validacion[0].confirmada_por_cliente === 1){
+            return res.status(400).json({ success: false, message: "La cita ya ha sido cancelada" });
+        }
         if (!citaData.length) {
             return res.status(404).json({ success: false, message: "Cita no encontrada" });
         }

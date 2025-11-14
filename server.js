@@ -12,7 +12,7 @@ import { log } from "console";
 const saltos = 10;
 const ruta = "http://localhost:3000";
 const RutaFront = "http://localhost:4321";
-//const RutaFront = "https://horalista.netlify.app";// cmabiar por el dominio del front 
+// const RutaFront = "https://horalista.netlify.app";// cmabiar por el dominio del front 
 const app = express();
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
@@ -864,21 +864,22 @@ cron.schedule("0 2 * * *", () => {
     limpiarTokens();
 });
 
-console.log("✅ Cron jobs activos");
+//console.log("✅ Cron jobs activos");
 
 
 
 //confirmacion de cita usuario
 app.post("/confirmar-cita", async (req, res) => {
     const { id } = req.body;
-    console.log(req.body);
+    //console.log(req.body);
     const validacion = await bd.query(
         `select confirmada_por_cliente, estado from horalista.agenda where id = ?;`,
         [id]
     );
-    console.log("validacion", validacion[0][0].confirmada_por_cliente, );
+    
     if (validacion[0][0].confirmada_por_cliente === 1) {
         return res.status(400).json({ success: false, message: "El usuario ya confirmo la cita esta en un estado de " + validacion[0][0].estado });
+      
     }
 
     try {
@@ -1051,7 +1052,7 @@ app.post("/cancelar-cita", async (req, res) => {
                 transporter.sendMail(mensajePrestador)
             ]);
 
-            console.log("✅ Correos enviados exitosamente");
+        //    console.log("✅ Correos enviados exitosamente");
         } catch (emailError) {
             console.error("Error enviando correos:", emailError);
             // No fallar la operación principal por errores de correo

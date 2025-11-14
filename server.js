@@ -7,10 +7,12 @@ import { v4 as uuidv4 } from 'uuid';
 import session from 'express-session';
 import createTransporter from './correo.js';
 import cron from "node-cron";
+import { log } from "console";
 
 const saltos = 10;
 const ruta = "http://localhost:3000";
-const RutaFront = "https://horalista.netlify.app";// cmabiar por el dominio del front 
+const RutaFront = "http://localhost:4321";
+//const RutaFront = "https://horalista.netlify.app";// cmabiar por el dominio del front 
 const app = express();
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
@@ -146,11 +148,11 @@ app.post("/restablecer-contrasena", async (req, res) => {
         await bd.execute(
             "INSERT INTO token (id, id_usuario, tipo, usado, expiracion) VALUES (?, ?, 'reset_pass', 0, ?)",
             [tokenId, usuario.id, expiracion]
-          );
-          
-          const linkRestablecimiento = `${RutaFront}/restablecer-contrasena?id_token=${tokenId}`;
-          
-          const mailOptions = {
+        );
+
+        const linkRestablecimiento = `${RutaFront}/restablecer-contrasena?id_token=${tokenId}`;
+
+        const mailOptions = {
             from: process.env.correoUser,
             to: correo,
             subject: "Restablecimiento de contraseña - HORA LISTA",
@@ -160,14 +162,14 @@ app.post("/restablecer-contrasena", async (req, res) => {
               <a href="${linkRestablecimiento}" style="color: #ffffff; background-color: #007bff; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Restablecer contraseña</a>
               <p>Si no solicitaste este restablecimiento, ignora este mensaje.</p>
             `
-          };
-          
-          // ✅ crear el transporter primero
-          const transporter = await createTransporter();
-          await transporter.sendMail(mailOptions);
-          
-          return res.json({ success: true, message: "Correo de restablecimiento enviado" });
-          
+        };
+
+        // ✅ crear el transporter primero
+        const transporter = await createTransporter();
+        await transporter.sendMail(mailOptions);
+
+        return res.json({ success: true, message: "Correo de restablecimiento enviado" });
+
     } catch (error) {
         console.error("Error al restablecer contraseña:", error);
         return res.status(500).json({ success: false, message: "Error al restablecer contraseña" });
@@ -735,17 +737,17 @@ app.put("/api/Reservas/cancelar", async (req, res) => {
         if (rows.length === 0) {
             return res.json({ success: false, message: "Cita no encontrada" });
         }
-        
+
         await bd.query("UPDATE agenda SET estado = 'cancelada' , recordatorio_enviado = 1 WHERE id = ?", [Agid]);
         res.json({ success: true, message: "Cita cancelada correctamente" });
-        
+
         const [usuario] = await bd.query("SELECT * FROM usuario WHERE id = ?", [Useid]);
-        
+
         const mensaje = `Hola ${usuario[0].nombre}, tu cita ha sido cancelada por el prestador de servicios.`;
-        
+
         // ✅ Crear el transporter primero
         const transporter = await createTransporter();
-        
+
         await transporter.sendMail({
             from: process.env.correoUser,
             to: usuario[0].correo,
@@ -757,7 +759,7 @@ app.put("/api/Reservas/cancelar", async (req, res) => {
               <p>Lo sentimos pero el prestador de servicio no estará disponible en ese momento.</p>
             `
         });
-        
+
 
     } catch (error) {
         console.error("Error al cancelar la cita:", error);
@@ -798,7 +800,7 @@ WHERE a.estado = 'pendiente'
 
             // ✅ Crear el transporter primero
             const transporter = await createTransporter();
-            
+
             await transporter.sendMail({
                 from: process.env.correoUser,
                 to: correo,
@@ -869,13 +871,16 @@ console.log("✅ Cron jobs activos");
 //confirmacion de cita usuario
 app.post("/confirmar-cita", async (req, res) => {
     const { id } = req.body;
-
+    console.log(req.body);
     const validacion = await bd.query(
-        `select confirmada_por_cliente , id from horalista.agenda where id = ?;`,
+        `select confirmada_por_cliente, estado from horalista.agenda where id = ?;`,
         [id]
     );
-    console.log(validacion);
-    console.log(id);
+    console.log("validacion", validacion[0][0].confirmada_por_cliente, );
+    if (validacion[0][0].confirmada_por_cliente === 1) {
+        return res.status(400).json({ success: false, message: "El usuario ya confirmo la cita esta en un estado de " + validacion[0][0].estado });
+    }
+
     try {
         const [result] = await bd.query(
             `UPDATE agenda 
@@ -886,10 +891,8 @@ WHERE id = ?;
 `,
             [id]
         );
-  
-        if(validacion[0].confirmada_por_cliente === 1){
-            return res.status(400).json({ success: false, message: "La cita ya ha sido confirmada" });
-        }
+
+
         if (result.affectedRows > 0) {
             res.json({ success: true, message: "Cita confirmada" });
         } else {
@@ -899,17 +902,22 @@ WHERE id = ?;
         console.error(error);
         res.status(500).json({ success: false, message: "Error en el servidor" });
     }
+
+
 });
 
 //cancelar cita de usuario por su cliente
 app.post("/cancelar-cita", async (req, res) => {
     const { id } = req.body;
-    
-  const validacion = await bd.query(
-            `select confirmada_por_cliente , id from horalista.agenda where id = ?;`,
-            [id]
-        );
-    console.log("ID recibido para cancelar:", id);
+
+    const validacion = await bd.query(
+        `select confirmada_por_cliente, estado , id from horalista.agenda where id = ?;`,
+        [id]
+    );
+
+    if (validacion[0][0].confirmada_por_cliente === 1) {
+        return res.status(400).json({ success: false, message: "El usuario ya confirmo la cita esta en un estado de " + validacion[0][0].estado });
+    }
 
     try {
         // Primero obtener los datos de la cita antes de actualizar
@@ -935,10 +943,8 @@ app.post("/cancelar-cita", async (req, res) => {
             [id]
         );
 
-      
-        if(validacion[0].confirmada_por_cliente === 1){
-            return res.status(400).json({ success: false, message: "La cita ya ha sido cancelada" });
-        }
+
+
         if (!citaData.length) {
             return res.status(404).json({ success: false, message: "Cita no encontrada" });
         }
@@ -1039,18 +1045,18 @@ app.post("/cancelar-cita", async (req, res) => {
         // Enviar correos (no bloquear la respuesta principal)
         try {
             const transporter = await createTransporter();
-        
+
             await Promise.all([
                 transporter.sendMail(mensajeCliente),
                 transporter.sendMail(mensajePrestador)
             ]);
-        
+
             console.log("✅ Correos enviados exitosamente");
         } catch (emailError) {
             console.error("Error enviando correos:", emailError);
             // No fallar la operación principal por errores de correo
         }
-        
+
         res.json({ success: true, message: "Cita cancelada exitosamente" });
 
     } catch (error) {

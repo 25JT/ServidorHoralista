@@ -9,6 +9,7 @@ import createTransporter from './correo.js';
 import cron from "node-cron";
 import { log } from "console";
 
+
 const saltos = 10;
 const ruta = "http://localhost:3000";
 const RutaFront = "http://localhost:4321";
@@ -105,7 +106,7 @@ app.get("/verificar-email", async (req, res) => {
 
     try {
         const [rows] = await bd.execute(
-            "SELECT * FROM token WHERE id = ? AND usado = 0 AND expiracion > NOW()",
+            "SELECT id, expiracion, id_usuario FROM token WHERE id = ? AND usado = 0 AND expiracion > NOW();",
             [id_token]
         );
 
@@ -113,7 +114,7 @@ app.get("/verificar-email", async (req, res) => {
             return res.status(400).json({ success: false, message: "Token inválido o expirado" });
         }
 
-        const verificadoUsuario = 1
+        const verificadoUsuario = 1;
 
         // Marcar como usado
         await bd.execute("UPDATE token SET usado = 1 WHERE id = ?", [id_token]);
@@ -122,6 +123,7 @@ app.get("/verificar-email", async (req, res) => {
         return res.json({ success: true, message: "Correo verificado correctamente" });
     } catch (err) {
         console.error(err);
+        
         return res.status(500).json({ success: false, message: "Error interno" });
     }
 });
@@ -132,7 +134,7 @@ app.post("/restablecer-contrasena", async (req, res) => {
 
     try {
         const [rows] = await bd.execute(
-            "SELECT * FROM usuario WHERE correo = ?",
+            "SELECT  correo, id FROM usuario WHERE correo = ?",
             [correo]
         );
 
@@ -140,7 +142,7 @@ app.post("/restablecer-contrasena", async (req, res) => {
             return res.status(400).json({ success: false, message: "Usuario no encontrado" });
         }
 
-        const usuario = rows[0];
+        const usuario = rows[0];    
 
         const tokenId = crypto.randomUUID();
         const expiracion = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
@@ -188,7 +190,7 @@ app.post("/cambiar-password", async (req, res) => {
     try {
         // Validar token
         const [rows] = await bd.execute(
-            "SELECT * FROM token WHERE id = ? AND usado = 0 AND expiracion > NOW()",
+            "SELECT  id, expiracion, id_usuario FROM token WHERE id = ? AND usado = 0 AND expiracion > NOW()",
             [token]
         );
 
@@ -226,7 +228,7 @@ app.post("/registro", async (req, res) => {
         //      console.log(req.body);
         // Verificar si el correo existe
         const [rows] = await bd.query(
-            "SELECT * FROM usuario WHERE correo = ?",
+            "SELECT correo, id FROM usuario WHERE correo = ?",
             [email]
         );
         if (rows.length > 0) {
@@ -253,9 +255,6 @@ app.post("/registro", async (req, res) => {
             role: role,
             id: id,
             email: email,
-
-
-
         });
 
     } catch (error) {
@@ -276,7 +275,7 @@ app.post("/login", async (req, res) => {
         const { correo, contrasena } = req.body;
 
         const [rows] = await bd.query(
-            "SELECT * FROM usuario WHERE correo = ?",
+            "SELECT id, correo, email_verificado, password, rol FROM usuario WHERE correo = ?",
             [correo]
         );
 
@@ -353,7 +352,8 @@ app.post("/logout", (req, res) => {
             console.error("Error al cerrar sesión:", err);
             return res.status(500).json({
                 success: false,
-                message: "Error al cerrar sesión"
+                message: "Error al cerrar sesión",
+                error: err.message
             });
         }
 
@@ -438,7 +438,7 @@ app.post("/registroNegocio", async (req, res) => {
 
 app.get("/serviciosDisponibles", async (req, res) => {
     try {
-        const [rows] = await bd.query("SELECT * FROM pservicio");
+        const [rows] = await bd.query("SELECT nombre_establecimiento, telefono_establecimiento, direccion, hora_inicio, hora_fin, dias_trabajo, Servicio, precio, id FROM pservicio");
         res.json({
             success: true,
             data: rows,
@@ -470,7 +470,7 @@ JOIN pservicio AS p
     ON a.id_pservicio = p.id
 WHERE a.id_usuario_cliente = ?
   AND a.fecha >= CURDATE()
-ORDER BY a.fecha ASC, a.hora ASC;
+ORDER BY a.fecha, a.hora;
         `, [userid]);
         res.json({
             success: true,
@@ -706,7 +706,7 @@ app.post("/api/Reservas", async (req, res) => {
         const [rows] = await bd.query(`   SELECT
     a.hora,
     a.fecha,
-    GROUP_CONCAT(a.notas) as notas,
+    GROUP_CONCAT(a.notas) AS notas,
     a.estado,
     u.nombre,
     ANY_VALUE(u.id) AS usuario_id,
@@ -717,6 +717,7 @@ JOIN usuario AS u
 WHERE a.id_pservicio = ?
 GROUP BY a.fecha, a.hora, a.estado, u.nombre
 ORDER BY a.fecha, a.hora;
+
 
 `, [idPservicio]);
         res.json({
@@ -733,7 +734,7 @@ app.put("/api/Reservas/cancelar", async (req, res) => {
     try {
         const { Agid, Useid } = req.body;
 
-        const [rows] = await bd.query("SELECT * FROM agenda WHERE id = ?", [Agid]);
+        const [rows] = await bd.query("SELECT id, id_pservicio,id_usuario_cliente FROM agenda WHERE id = ?", [Agid]);
         if (rows.length === 0) {
             return res.json({ success: false, message: "Cita no encontrada" });
         }
@@ -741,8 +742,9 @@ app.put("/api/Reservas/cancelar", async (req, res) => {
         await bd.query("UPDATE agenda SET estado = 'cancelada' , recordatorio_enviado = 1 WHERE id = ?", [Agid]);
         res.json({ success: true, message: "Cita cancelada correctamente" });
 
-        const [usuario] = await bd.query("SELECT * FROM usuario WHERE id = ?", [Useid]);
+        const [usuario] = await bd.query("SELECT nombre,correo FROM usuario WHERE id = ?", [Useid]);
 
+        console.log(usuario);
         const mensaje = `Hola ${usuario[0].nombre}, tu cita ha sido cancelada por el prestador de servicios.`;
 
         // ✅ Crear el transporter primero
@@ -775,20 +777,20 @@ app.put("/api/Reservas/cancelar", async (req, res) => {
 async function recordatorioCitas() {
     try {
         const [rows] = await bd.query(`
-	SELECT 
+SELECT 
     a.id,
     DATE_FORMAT(a.fecha, '%d/%m/%Y') AS fecha,
     TIME_FORMAT(a.hora, '%H:%i') AS hora,
     u.nombre,
     u.correo
-FROM agenda a
-INNER JOIN usuario u 
+FROM horalista.agenda a
+INNER JOIN horalista.usuario u 
     ON a.id_usuario_cliente = u.id
 WHERE a.estado = 'pendiente'
   AND a.recordatorio_enviado = 0
-  AND TIMESTAMP(a.fecha, a.hora) 
-      BETWEEN CONVERT_TZ(NOW(), '+00:00', '-05:00') 
-          AND CONVERT_TZ(DATE_ADD(NOW(), INTERVAL 1 HOUR), '+00:00', '-05:00');
+  AND TIMESTAMP(a.fecha, a.hora)
+        BETWEEN NOW()
+            AND DATE_ADD(NOW(), INTERVAL 1 HOUR);
       `);
 
         for (let row of rows) {

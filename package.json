@@ -5,11 +5,11 @@
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "express-session": "^1.18.2",
-    "googleapis": "^158.0.0",
+    "googleapis": "^166.0.0",
     "mysql2": "^3.14.2",
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.5",
-    "uuid": "^11.1.0"
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

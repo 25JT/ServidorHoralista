@@ -12,8 +12,8 @@ import { log } from "console";
 
 const saltos = 10;
 const ruta = "http://localhost:3000";
-const RutaFront = "http://localhost:4321";
-// const RutaFront = "https://horalista.netlify.app";// cmabiar por el dominio del front 
+//const RutaFront = "http://localhost:4321";
+ const RutaFront = "https://fromprueba-production.up.railway.app";// cmabiar por el dominio del front 
 const app = express();
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
@@ -715,8 +715,9 @@ FROM agenda AS a
 JOIN usuario AS u
     ON a.id_usuario_cliente = u.id
 WHERE a.id_pservicio = ?
+  AND a.fecha >= CURDATE()
 GROUP BY a.fecha, a.hora, a.estado, u.nombre
-ORDER BY a.fecha, a.hora;
+ORDER BY a.fecha ASC, a.hora ASC;
 
 
 `, [idPservicio]);

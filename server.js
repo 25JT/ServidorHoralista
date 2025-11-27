@@ -869,6 +869,27 @@ cron.schedule("0 2 * * *", () => {
 
 //console.log("✅ Cron jobs activos");
 
+//Datos del usuario para enviar a confirmacion de citas
+
+app.post("/datos-usuario", async (req, res) => {
+    const { id } = req.body;
+    const [rows] = await bd.query( `
+SELECT 
+    DATE_FORMAT(a.fecha, '%d-%m-%Y') AS fecha,
+    DATE_FORMAT(a.hora, '%r') AS hora,
+    
+  u.nombre AS nombre_usuario,
+    s.Servicio AS nombre_servicio,
+    s.Precio AS precio_servicio
+FROM    agenda a
+INNER JOIN usuario u 
+    ON a.id_usuario_cliente = u.id
+INNER JOIN pservicio s 
+    ON a.id_pservicio = s.id
+    WHERE a.id = ? `, [id]);
+    res.json(rows);
+})
+
 
 
 //confirmacion de cita usuario

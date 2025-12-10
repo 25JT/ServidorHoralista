@@ -8,12 +8,13 @@ import session from 'express-session';
 import createTransporter from './correo.js';
 import cron from "node-cron";
 import { log } from "console";
+import { logging } from "googleapis/build/src/apis/logging/index.js";
 
 
 const saltos = 10;
 const ruta = "http://localhost:3000";
-//const RutaFront = "http://localhost:4321";
- const RutaFront = "https://fromprueba-production.up.railway.app";// cmabiar por el dominio del front 
+const RutaFront = "http://localhost:4321";
+//const RutaFront = "https://fromprueba-production.up.railway.app";// cmabiar por el dominio del front 
 const app = express();
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
@@ -123,7 +124,7 @@ app.get("/verificar-email", async (req, res) => {
         return res.json({ success: true, message: "Correo verificado correctamente" });
     } catch (err) {
         console.error(err);
-        
+
         return res.status(500).json({ success: false, message: "Error interno" });
     }
 });
@@ -142,7 +143,7 @@ app.post("/restablecer-contrasena", async (req, res) => {
             return res.status(400).json({ success: false, message: "Usuario no encontrado" });
         }
 
-        const usuario = rows[0];    
+        const usuario = rows[0];
 
         const tokenId = crypto.randomUUID();
         const expiracion = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
@@ -873,7 +874,7 @@ cron.schedule("0 2 * * *", () => {
 
 app.post("/datos-usuario", async (req, res) => {
     const { id } = req.body;
-    const [rows] = await bd.query( `
+    const [rows] = await bd.query(`
 SELECT 
     DATE_FORMAT(a.fecha, '%d-%m-%Y') AS fecha,
     DATE_FORMAT(a.hora, '%r') AS hora,
@@ -900,10 +901,10 @@ app.post("/confirmar-cita", async (req, res) => {
         `select confirmada_por_cliente, estado from horalista.agenda where id = ?;`,
         [id]
     );
-    
+
     if (validacion[0][0].confirmada_por_cliente === 1) {
         return res.status(400).json({ success: false, message: "El usuario ya confirmo la cita esta en un estado de " + validacion[0][0].estado });
-      
+
     }
 
     try {
@@ -1076,7 +1077,7 @@ app.post("/cancelar-cita", async (req, res) => {
                 transporter.sendMail(mensajePrestador)
             ]);
 
-        //    console.log("✅ Correos enviados exitosamente");
+            //    console.log("✅ Correos enviados exitosamente");
         } catch (emailError) {
             console.error("Error enviando correos:", emailError);
             // No fallar la operación principal por errores de correo
@@ -1096,3 +1097,12 @@ app.post("/cancelar-cita", async (req, res) => {
     }
 });
 
+
+//SLIDERBAR FUNCIONES
+
+app.post("/nombreUser", async (req, res) => {
+    const { userid } = req.body;
+    const [rows] = await bd.query("select correo, nombre from usuario where id = ? ", [userid]);
+    console.log(rows);
+    res.json(rows[0]);
+});

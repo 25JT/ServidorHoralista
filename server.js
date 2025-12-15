@@ -13,8 +13,8 @@ import { logging } from "googleapis/build/src/apis/logging/index.js";
 
 const saltos = 10;
 const ruta = "http://localhost:3000";
-const RutaFront = "http://localhost:4321";
-//const RutaFront = "https://fromprueba-production.up.railway.app";// cmabiar por el dominio del front 
+//const RutaFront = "http://localhost:4321";
+const RutaFront = "https://fromprueba-production.up.railway.app";// cmabiar por el dominio del front 
 const app = express();
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
@@ -1105,6 +1105,6 @@ app.post("/cancelar-cita", async (req, res) => {
 app.post("/nombreUser", async (req, res) => {
     const { userid } = req.body;
     const [rows] = await bd.query("select correo, nombre from usuario where id = ? ", [userid]);
-    console.log(rows);
+    //  console.log(rows);
     res.json(rows[0]);
 });

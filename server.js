@@ -699,11 +699,12 @@ app.post("/agendarcita", async (req, res) => {
 app.post("/api/Reservas", async (req, res) => {
     try {
         const { userid } = req.body;
-        const [id] = await bd.query("SELECT id FROM `pservicio` WHERE id_usuario = ?", [userid]);
+        const [id] = await bd.query("SELECT id, nombre_establecimiento FROM `pservicio` WHERE id_usuario = ?", [userid]);
         if (id == null) {
             return res.json({ success: false, message: "No se encontro ningun servicio" });
         }
         const idPservicio = id[0].id;
+        const NombreEstablecimiento = id[0].nombre_establecimiento;
         const [rows] = await bd.query(`   SELECT
     a.hora,
     a.fecha,
@@ -725,6 +726,7 @@ ORDER BY a.fecha ASC, a.hora ASC;
         res.json({
             success: true,
             data: rows,
+            NombreEstablecimiento
         });
     } catch (error) {
         console.error("Error al mostrar las citas:", error);

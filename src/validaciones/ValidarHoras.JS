@@ -1,6 +1,3 @@
-
-
-
 import { app } from "../config/Seccion.js";
 import bd from "../config/Bd.js";
 //validar horas de citas

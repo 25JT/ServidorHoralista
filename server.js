@@ -1,8 +1,3 @@
-
-import bd from "./src/config/Bd.js";
-import createTransporter from './src/config/correo.js';
-import cron from "node-cron";
-import { app } from "./src/config/Seccion.js";
 import "./holamundo.js";
 import "./src/Tokens/Token.js";
 import "./src/Login/Login.js";

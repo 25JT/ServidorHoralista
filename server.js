@@ -6,11 +6,10 @@ import "./src/Disponibilidad Citas datos usuario/DatosUsuario.js";
 import "./src/Disponibilidad Citas datos usuario/mostrarCitas.js";
 import "./src/Disponibilidad Citas datos usuario/ServiciosDisponibles.js";
 import "./src/agenda/AgendarCita.js";
-import "./src/validaciones/ValidarHoras.js"
+import "./src/validaciones/ValidarHoras.js";
 import "./src/Disponibilidad Citas datos usuario/RecodrdatoriosCitas.js";
 import "./src/Reservas/Reservas.js";
 import "./src/Reservas/CancelarReservas.js";
-import "./src/Disponibilidad Citas datos usuario/RecodrdatoriosCitas.js";
 import "./src/Tokens/LimpiezaTokens.js";
 import "./src/Disponibilidad Citas datos usuario/confirmarcitas.js";
 import "./src/Disponibilidad Citas datos usuario/CancelarCita.js";

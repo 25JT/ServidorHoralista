@@ -23,8 +23,8 @@ const RutaFront = "https://fromprueba-production.up.railway.app";// cmabiar por 
 
 
 
-import { app } from "../config/Seccion.js";
-import bd from "../config/Bd.js";
+import { app } from "./src/config/Seccion.js";
+import bd from "./src/config/Bd.js";
 //validar horas de citas
 
 app.post("/validarHoras", async (req, res) => {

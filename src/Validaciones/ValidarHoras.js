@@ -18,7 +18,7 @@ app.post("/validarHoras", async (req, res) => {
 
         // 2. Obtener rango de horas del servicio
         const [servicio] = await bd.query(
-            "SELECT hora_inicio, hora_fin FROM pservicio WHERE id = ?",
+            "SELECT hora_inicio, hora_fin, intervaloCitas FROM pservicio WHERE id = ?",
             [id]
         );
 
@@ -42,6 +42,9 @@ app.post("/validarHoras", async (req, res) => {
         const horaFin = parseInt(servicio[0].hora_fin.split(':')[0]);
 
         const todasHoras = [];
+
+
+
         for (let h = horaInicio; h <= horaFin; h++) {
             todasHoras.push(`${h.toString().padStart(2, '0')}:00:00`);
         }
@@ -49,6 +52,7 @@ app.post("/validarHoras", async (req, res) => {
         // 5. Filtrar horas disponibles
         const horasOcupadas = ocupadas.map(c => c.hora);
         const horasDisponibles = todasHoras.filter(hora => !horasOcupadas.includes(hora));
+
 
         // 6. Respuesta mejorada
         res.json({

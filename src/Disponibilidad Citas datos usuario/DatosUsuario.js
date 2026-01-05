@@ -6,13 +6,14 @@ app.post("/datosUsuario", async (req, res) => {
     try {
         const { userid, id } = req.body;
         const [rows] = await bd.query("SELECT nombre, apellidos, telefono, correo FROM `usuario` WHERE id =?", [userid]);
-        const [rows2] = await bd.query("SELECT nombre_establecimiento, dias_trabajo, telefono_establecimiento, direccion FROM `pservicio` WHERE id =?", [id]);
+        const [rows2] = await bd.query("SELECT nombre_establecimiento, dias_trabajo, telefono_establecimiento, direccion, intervaloCitas FROM `pservicio` WHERE id =?", [id]);
         res.json({
             rows,
             rows2,
             success: true,
             data: rows || rows2,
         });
+
     } catch (error) {
         console.error("Error al mostrar los datos del usuario:", error);
         res.status(500).json({

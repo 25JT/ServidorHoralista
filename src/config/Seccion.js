@@ -11,7 +11,7 @@ app.use(cors());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.listen(3000, () => {
-    console.log("Server funciona en el puerto " + ruta);
+    //  console.log("Server funciona en el puerto " + ruta);
 });
 
 // sesion abierta 

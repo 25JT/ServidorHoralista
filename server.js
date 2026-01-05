@@ -15,9 +15,10 @@ import "./src/Disponibilidad Citas datos usuario/confirmarcitas.js";
 import "./src/Disponibilidad Citas datos usuario/CancelarCita.js";
 import "./src/sliderBar/NombreUser.js";
 import "./src/RegistroNegocio/RegistroNegocio.js";
+import "./src/Ajustes/Ajustes.js";
 
 
 
-//const RutaFront = "http://localhost:4321";
-const RutaFront = "https://fromprueba-production.up.railway.app";// cmabiar por el dominio del front 
+const RutaFront = "http://localhost:4321";
+//const RutaFront = "https://fromprueba-production.up.railway.app";// cmabiar por el dominio del front 
 

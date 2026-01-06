@@ -8,9 +8,8 @@ export function diasTrabajo() {
     app.post("/api/diasTrabajo", verificarSesion, async (req, res) => {
         try {
             //  Usar el userId de la sesión (fuente de verdad)
-            const userid = req.session.userId;
 
-            const [rows] = await bd.query("SELECT dias_trabajo FROM pservicio WHERE id_usuario = ?", [userid]);
+            const [rows] = await bd.query("SELECT dias_trabajo FROM pservicio WHERE id_usuario = ?", [req.session.userId]);
             res.json({ success: true, data: rows });
         } catch (error) {
             console.error("Error al obtener ajustes:", error);
@@ -23,32 +22,14 @@ export function intervaloCitas() {
     //  Middleware de autenticación aplicado
     app.post("/api/duracionCita", verificarSesion, async (req, res) => {
         try {
-            //  Usar el userId de la sesión (fuente de verdad)
-            const userid = req.session.userId;
-            const userRole = req.session.role;
+            //  Usar el userId de la sesión (fuente de verdad)           
             const { intervaloCita } = req.body;
 
             console.log("intervaloCita:", intervaloCita);
-            console.log("userid (desde sesión):", userid);
-            console.log("userRole (desde sesión):", userRole);
 
-            if (!intervaloCita) {
-                return res.status(400).json({ success: false, message: "Falta el intervalo de cita" });
-            }
-
-            //  Validar que el usuario tenga rol de profesional
-            const validacionrol = await validacionRol(userid);
-            console.log("Validación de rol:", validacionrol);
-
-            if (validacionrol.length === 0 || validacionrol[0].rol !== "profesional") {
-                return res.status(403).json({
-                    success: false,
-                    message: "No tienes permisos para realizar esta acción. Solo usuarios profesionales pueden modificar esta configuración."
-                });
-            }
 
             //  Actualizar solo si el usuario es el propietario (garantizado por la sesión)
-            await bd.query("UPDATE pservicio SET intervaloCitas = ? WHERE id_usuario = ?", [intervaloCita, userid]);
+            await bd.query("UPDATE pservicio SET intervaloCitas = ? WHERE id_usuario = ?", [intervaloCita, req.session.userId]);
 
             res.json({ success: true, message: "Configuración actualizada correctamente" });
 
@@ -60,6 +41,97 @@ export function intervaloCitas() {
 
 }
 
+export function horasDisponibles() {
+    app.post("/api/horasLaborales", verificarSesion, async (req, res) => {
+        try {
+            const horaInicio = req.body.horaInicio;
+            const horaFin = req.body.horaFin;
 
+            console.log("horaInicio (desde body):", horaInicio);
+            console.log("horaFin (desde body):", horaFin);
+
+            if (!horaInicio || !horaFin) {
+                return res.status(400).json({ success: false, message: "Faltan las horas de inicio y fin" });
+            }
+
+            //  Actualizar solo si el usuario es el propietario (garantizado por la sesión)
+            await bd.query("UPDATE pservicio SET hora_inicio = ?, hora_fin = ? WHERE id_usuario = ?", [horaInicio, horaFin, req.session.userId]);
+
+            res.json({ success: true, message: "Configuración actualizada correctamente" });
+
+        } catch (error) {
+            console.error("Error al obtener ajustes:", error);
+            res.status(500).json({ success: false, message: "Error al obtener ajustes", error: error.message });
+        }
+    })
+}
+
+export function diasExcepcionales() {
+    app.post("/api/fechasExcep", verificarSesion, async (req, res) => {
+        try {
+            const diasExcepciones = req.body.diasExcepciones;
+
+            console.log("diasExcepciones recibidos:", diasExcepciones);
+
+            if (!diasExcepciones || typeof diasExcepciones !== 'object') {
+                return res.status(400).json({ success: false, message: "Faltan los dias excepcionales o el formato es incorrecto" });
+            }
+
+            // 1. Obtener el id_pservicio relacionado con el usuario
+            const [pservicioRows] = await bd.query("SELECT id FROM pservicio WHERE id_usuario = ?", [req.session.userId]);
+
+            if (pservicioRows.length === 0) {
+                return res.status(404).json({ success: false, message: "No se encontró un servicio asociado a este usuario profesional." });
+            }
+
+            const id_pservicio = pservicioRows[0].id;
+
+            // 2. Procesar cada fecha
+            for (const [fechaOriginal, esLaborable] of Object.entries(diasExcepciones)) {
+                const es_laborable = esLaborable ? 1 : 0;
+
+                // Formatear la fecha si viene en formato YYYY-M-D (ej: 2026-0-14 -> 2026-01-14)
+                // Nota: Si el front envía el mes 0-indexado, sumamos 1.
+                const partes = fechaOriginal.split('-');
+                if (partes.length === 3) {
+                    const year = partes[0];
+                    const month = (parseInt(partes[1]) + 1).toString().padStart(2, '0');
+                    const day = partes[2].padStart(2, '0');
+                    const fechaFormateada = `${year}-${month}-${day}`;
+
+                    // ✅ VALIDACIÓN: Solo permitir fechas futuras (no hoy, no pasado)
+                    const ahora = new Date();
+                    // Obtener fecha actual en Bogotá (UTC-5)
+                    const offset = -5;
+                    const hoyBogota = new Date(ahora.getTime() + (offset * 3600000) + (ahora.getTimezoneOffset() * 60000));
+                    const hoyStr = hoyBogota.toISOString().split('T')[0];
+
+                    if (fechaFormateada <= hoyStr) {
+                        console.log(`⚠️ Saltando fecha ${fechaFormateada} por ser hoy o pasada.`);
+                        continue;
+                    }
+
+                    // Limpiar excepciones previas para evitar duplicados si no hay constraint único
+                    await bd.query("DELETE FROM pservicio_excepcion WHERE id_pservicio = ? AND fecha = ?", [id_pservicio, fechaFormateada]);
+
+                    // Insertar la nueva excepción
+                    await bd.query(`
+                        INSERT INTO pservicio_excepcion (id, id_pservicio, id_usuario, fecha, es_laborable, created_at)
+                        VALUES (UUID(), ?, ?, ?, ?, NOW())
+                    `, [id_pservicio, req.session.userId, fechaFormateada, es_laborable]);
+                }
+            }
+
+            res.json({ success: true, message: "Excepciones de calendario actualizadas correctamente" });
+
+        } catch (error) {
+            console.error("Error al actualizar excepciones de calendario:", error);
+            res.status(500).json({ success: false, message: "Error al actualizar excepciones", error: error.message });
+        }
+    })
+}
+
+horasDisponibles();
+diasExcepcionales();
 intervaloCitas();
 diasTrabajo();

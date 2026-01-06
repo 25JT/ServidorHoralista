@@ -62,12 +62,26 @@ app.post("/login", async (req, res) => {
         req.session.role = usuario.rol;
         req.session.negocio_creado = negocio_creado;
 
-        // ✅ Enviar ID del usuario al frontend
-        res.json({
-            success: true,
-            role: usuario.rol,
-            id: usuario.id, // <--- este es el ID que puedes usar en el frontend
-            negocio_creado: negocio_creado
+        // 🔍 Debug: Verificar que la sesión se guardó
+        console.log('✅ Login exitoso - Sesión creada:');
+        console.log('   Session ID:', req.sessionID);
+        console.log('   User ID:', req.session.userId);
+        console.log('   Role:', req.session.role);
+        console.log('   Negocio creado:', req.session.negocio_creado);
+
+        // ✅ Forzar guardado de sesión antes de responder
+        req.session.save((err) => {
+            if (err) {
+                console.error('❌ Error al guardar sesión:', err);
+                return res.status(500).json({ success: false, message: "Error al guardar sesión" });
+            }
+            // ✅ Enviar respuesta
+            res.json({
+                success: true,
+                role: usuario.rol,
+                id: usuario.id,
+                negocio_creado: negocio_creado
+            });
         });
     } catch (error) {
         console.error("Error al iniciar sesión:", error);

@@ -1,10 +1,15 @@
 import { app } from "../config/Seccion.js";
 import bd from "../config/Bd.js";
+import { verificarSesion } from "../middleware/autenticacion.js";
 
-app.post("/datosUsuario", async (req, res) => {
+// ✅ Protegido con verificarSesion
+app.post("/datosUsuario", verificarSesion, async (req, res) => {
 
     try {
-        const { userid, id } = req.body;
+        // ✅ Usar el userId de la sesión (fuente de verdad)
+        const userid = req.session.userId;
+        const { id } = req.body; // ID del servicio
+
         const [rows] = await bd.query("SELECT nombre, apellidos, telefono, correo FROM `usuario` WHERE id =?", [userid]);
         const [rows2] = await bd.query("SELECT nombre_establecimiento, dias_trabajo, telefono_establecimiento, direccion, intervaloCitas FROM `pservicio` WHERE id =?", [id]);
         res.json({
@@ -25,7 +30,7 @@ app.post("/datosUsuario", async (req, res) => {
 });
 
 //Datos del usuario para enviar a confirmacion de citas
-
+// ✅ Protegido con verificarSesion
 app.post("/datos-usuario", async (req, res) => {
     const { id } = req.body;
     const [rows] = await bd.query(`
@@ -34,6 +39,7 @@ SELECT
     DATE_FORMAT(a.hora, '%r') AS hora,
     
   u.nombre AS nombre_usuario,
+  u.id AS usuario_id,
     s.Servicio AS nombre_servicio,
     s.Precio AS precio_servicio
 FROM    agenda a

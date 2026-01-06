@@ -3,12 +3,16 @@ import { app } from "../config/Seccion.js";
 import bd from "../config/Bd.js";
 import createTransporter from "../config/correo.js";
 import { RutaFront } from "../RutaFront/Ruta.js";
+import { verificarSesion } from "../middleware/autenticacion.js";
 
-app.post("/agendarcita", async (req, res) => {
+// ✅ Protegido con verificarSesion
+app.post("/agendarcita", verificarSesion, async (req, res) => {
     try {
-        const { userid, id, fecha, hora, mensaje, correo, nombre_establecimiento, telefono_establecimiento, nombre, apellido, direccion } = req.body;
+        // ✅ Usar el userId de la sesión (fuente de verdad)
+        const userid = req.session.userId;
+        const { id, fecha, hora, mensaje, correo, nombre_establecimiento, telefono_establecimiento, nombre, apellido, direccion } = req.body;
 
-        if (!userid || !id || !fecha || !hora) {
+        if (!id || !fecha || !hora) {
             return res.status(400).json({ success: false, message: "Faltan datos requeridos" });
         }
 

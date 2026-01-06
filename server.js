@@ -5,7 +5,7 @@ import "./src/Registro/RegistroUsuario.js";
 import "./src/Disponibilidad Citas datos usuario/DatosUsuario.js";
 import "./src/Disponibilidad Citas datos usuario/mostrarCitas.js";
 import "./src/Disponibilidad Citas datos usuario/ServiciosDisponibles.js";
-import "./src/agenda/AgendarCita.js"; 1
+import "./src/agenda/AgendarCita.js";
 import "./src/Validaciones/ValidarHoras.js";
 import "./src/Disponibilidad Citas datos usuario/RecodrdatoriosCitas.js";
 import "./src/Reservas/Reservas.js";
@@ -16,6 +16,8 @@ import "./src/Disponibilidad Citas datos usuario/CancelarCita.js";
 import "./src/sliderBar/NombreUser.js";
 import "./src/RegistroNegocio/RegistroNegocio.js";
 import "./src/Ajustes/Ajustes.js";
+import "./src/Cerrar sesion/CerrarSesion.js";
+import "./src/Restablecimientos/Restablecercontraseña.js";
 
 
 

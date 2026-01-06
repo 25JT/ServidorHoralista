@@ -1,9 +1,11 @@
 
 import { app } from "../config/Seccion.js";
 import bd from "../config/Bd.js";
+import { verificarSesion } from "../middleware/autenticacion.js";
 
 //registro negocio
-app.post("/registroNegocio", async (req, res) => {
+// ✅ Protegido con middleware de autenticación
+app.post("/registroNegocio", verificarSesion, async (req, res) => {
     try {
         const {
             nombre_establecimiento,
@@ -17,7 +19,9 @@ app.post("/registroNegocio", async (req, res) => {
 
 
         } = req.body.data;
-        const userid = req.body.userid;
+
+        // ✅ Usar el userId de la sesión (fuente de verdad)
+        const userid = req.session.userId;
         //     console.log(req.body);
 
         if (!userid) {

@@ -4,7 +4,7 @@ import { RutaFront } from "../RutaFront/Ruta.js";
 import cron from "node-cron";
 
 // 📌 Recordatorios → cada hora en el minuto 0
-cron.schedule("0 * * * *", () => {
+cron.schedule("27 * * * *", () => {
     console.log("⏰ Ejecutando recordatorio de citas...");
     recordatorioCitas();
 });

@@ -34,12 +34,23 @@ app.post("/registro", async (req, res) => {
             [id, email, contrasenaEncriptada, name, lastname, phone, role]
         );
 
-        res.json({
-            success: true,
-            role: role,
-            id: id,
-            email: email,
+        // 🔽 Iniciar sesión automáticamente después del registro
+        req.session.userId = id;
+        req.session.role = role;
+        req.session.negocio_creado = 0;
+
+        req.session.save((err) => {
+            if (err) {
+                console.error('❌ Error al guardar sesión en registro:', err);
+            }
+            res.json({
+                success: true,
+                role: role,
+                id: id,
+                email: email,
+            });
         });
+
 
     } catch (error) {
         console.error("Error al registrar el usuario:", error);

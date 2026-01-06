@@ -1,11 +1,13 @@
-
 import { app } from "../config/Seccion.js";
 import bd from "../config/Bd.js";
+import { verificarSesion } from "../middleware/autenticacion.js";
 
 //citas en su agenda
-app.post("/mostrarCitas", async (req, res) => {
+// ✅ Protegido con verificarSesion
+app.post("/mostrarCitas", verificarSesion, async (req, res) => {
 
-    const userid = req.body.userid;
+    // ✅ Usar el userId de la sesión (fuente de verdad)
+    const userid = req.session.userId;
 
     try {
         const [rows] = await bd.query(`SELECT 
@@ -21,6 +23,7 @@ app.post("/mostrarCitas", async (req, res) => {
       AND a.fecha >= CURDATE()
     ORDER BY a.fecha, a.hora;
             `, [userid]);
+
         res.json({
             success: true,
             data: rows,

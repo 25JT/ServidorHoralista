@@ -1,13 +1,17 @@
 import { app } from "../config/Seccion.js";
 import bd from "../config/Bd.js";
+import { verificarSesion } from "../middleware/autenticacion.js";
 
 
 
 //Mostrar citas al prestador de servicio
 
-app.post("/api/Reservas", async (req, res) => {
+// ✅ Protegido con middleware de autenticación
+app.post("/api/Reservas", verificarSesion, async (req, res) => {
   try {
-    const { userid } = req.body;
+    // ✅ Usar el userId de la sesión (fuente de verdad)
+    const userid = req.session.userId;
+
     const [id] = await bd.query("SELECT id, nombre_establecimiento FROM `pservicio` WHERE id_usuario = ?", [userid]);
     if (id == null) {
       return res.json({ success: false, message: "No se encontro ningun servicio" });

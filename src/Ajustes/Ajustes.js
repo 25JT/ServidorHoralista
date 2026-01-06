@@ -4,10 +4,10 @@ import validacionRol from "../Validaciones/validacionRol.js";
 import { verificarSesion } from "../middleware/autenticacion.js";
 
 export function diasTrabajo() {
-    // ✅ Middleware de autenticación aplicado
+    //  Middleware de autenticación aplicado
     app.post("/api/diasTrabajo", verificarSesion, async (req, res) => {
         try {
-            // ✅ Usar el userId de la sesión (fuente de verdad)
+            //  Usar el userId de la sesión (fuente de verdad)
             const userid = req.session.userId;
 
             const [rows] = await bd.query("SELECT dias_trabajo FROM pservicio WHERE id_usuario = ?", [userid]);
@@ -20,10 +20,10 @@ export function diasTrabajo() {
 }
 
 export function intervaloCitas() {
-    // ✅ Middleware de autenticación aplicado
+    //  Middleware de autenticación aplicado
     app.post("/api/duracionCita", verificarSesion, async (req, res) => {
         try {
-            // ✅ Usar el userId de la sesión (fuente de verdad)
+            //  Usar el userId de la sesión (fuente de verdad)
             const userid = req.session.userId;
             const userRole = req.session.role;
             const { intervaloCita } = req.body;
@@ -36,7 +36,7 @@ export function intervaloCitas() {
                 return res.status(400).json({ success: false, message: "Falta el intervalo de cita" });
             }
 
-            // ✅ Validar que el usuario tenga rol de profesional
+            //  Validar que el usuario tenga rol de profesional
             const validacionrol = await validacionRol(userid);
             console.log("Validación de rol:", validacionrol);
 
@@ -47,7 +47,7 @@ export function intervaloCitas() {
                 });
             }
 
-            // ✅ Actualizar solo si el usuario es el propietario (garantizado por la sesión)
+            //  Actualizar solo si el usuario es el propietario (garantizado por la sesión)
             await bd.query("UPDATE pservicio SET intervaloCitas = ? WHERE id_usuario = ?", [intervaloCita, userid]);
 
             res.json({ success: true, message: "Configuración actualizada correctamente" });

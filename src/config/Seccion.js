@@ -5,8 +5,11 @@ import { RutaFront } from "../RutaFront/Ruta.js";
 
 export const app = express();
 
-// ✅ Configuración de CORS flexible para desarrollo local
-const allowedOrigins = [RutaFront];
+// ✅ Configuración de CORS flexible
+const allowedOrigins = [
+    RutaFront,
+    "https://fromprueba-production.up.railway.app"
+];
 
 // ✅ Detectar si estamos en producción (la nube)
 const esProduccion = RutaFront.includes("https");
@@ -14,7 +17,7 @@ const esProduccion = RutaFront.includes("https");
 app.use(cors({
     origin: function (origin, callback) {
         // Permitir peticiones sin origen (como Postman) o de orígenes permitidos
-        if (!origin || allowedOrigins.includes(origin) || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        if (!origin || allowedOrigins.includes(origin) || (typeof origin === 'string' && (origin.includes('localhost') || origin.includes('127.0.0.1')))) {
             callback(null, true);
         } else {
             console.log('🚫 Origen bloqueado por CORS:', origin);

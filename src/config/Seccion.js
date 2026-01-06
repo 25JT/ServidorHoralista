@@ -4,6 +4,7 @@ import session from 'express-session';
 import { RutaFront } from "../RutaFront/Ruta.js";
 
 export const app = express();
+app.set('trust proxy', 1); // ✅ Confiar en el proxy de Railway para cookies seguras
 
 // ✅ Configuración de CORS flexible
 const allowedOrigins = [

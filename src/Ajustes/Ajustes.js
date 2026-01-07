@@ -1,6 +1,6 @@
 import { app } from "../config/Seccion.js";
 import bd from "../config/Bd.js";
-import validacionRol from "../Validaciones/validacionRol.js";
+
 import { verificarSesion } from "../middleware/autenticacion.js";
 
 export function diasTrabajo() {
@@ -9,7 +9,16 @@ export function diasTrabajo() {
         try {
             //  Usar el userId de la sesión (fuente de verdad)
 
-            const [rows] = await bd.query("SELECT dias_trabajo FROM pservicio WHERE id_usuario = ?", [req.session.userId]);
+            const [rows] = await bd.query(`SELECT 
+            p.dias_trabajo,
+            e.fecha,
+            e.es_laborable
+            FROM pservicio AS p
+            INNER JOIN pservicio_excepcion AS e
+            ON e.id_usuario = p.id_usuario
+            WHERE p.id_usuario = ?`, [req.session.userId]);
+
+            // console.log("rows:", rows);
             res.json({ success: true, data: rows });
         } catch (error) {
             console.error("Error al obtener ajustes:", error);
@@ -25,7 +34,7 @@ export function intervaloCitas() {
             //  Usar el userId de la sesión (fuente de verdad)           
             const { intervaloCita } = req.body;
 
-            console.log("intervaloCita:", intervaloCita);
+            //  console.log("intervaloCita:", intervaloCita);
 
 
             //  Actualizar solo si el usuario es el propietario (garantizado por la sesión)
@@ -47,8 +56,8 @@ export function horasDisponibles() {
             const horaInicio = req.body.horaInicio;
             const horaFin = req.body.horaFin;
 
-            console.log("horaInicio (desde body):", horaInicio);
-            console.log("horaFin (desde body):", horaFin);
+            // console.log("horaInicio (desde body):", horaInicio);
+            // console.log("horaFin (desde body):", horaFin);
 
             if (!horaInicio || !horaFin) {
                 return res.status(400).json({ success: false, message: "Faltan las horas de inicio y fin" });
@@ -71,7 +80,7 @@ export function diasExcepcionales() {
         try {
             const diasExcepciones = req.body.diasExcepciones;
 
-            console.log("diasExcepciones recibidos:", diasExcepciones);
+            // console.log("diasExcepciones recibidos:", diasExcepciones);
 
             if (!diasExcepciones || typeof diasExcepciones !== 'object') {
                 return res.status(400).json({ success: false, message: "Faltan los dias excepcionales o el formato es incorrecto" });
@@ -107,18 +116,26 @@ export function diasExcepcionales() {
                     const hoyStr = hoyBogota.toISOString().split('T')[0];
 
                     if (fechaFormateada <= hoyStr) {
-                        console.log(`⚠️ Saltando fecha ${fechaFormateada} por ser hoy o pasada.`);
+                        //   console.log(`⚠️ Saltando fecha ${fechaFormateada} por ser hoy o pasada.`);
                         continue;
                     }
 
-                    // Limpiar excepciones previas para evitar duplicados si no hay constraint único
-                    await bd.query("DELETE FROM pservicio_excepcion WHERE id_pservicio = ? AND fecha = ?", [id_pservicio, fechaFormateada]);
 
-                    // Insertar la nueva excepción
-                    await bd.query(`
-                        INSERT INTO pservicio_excepcion (id, id_pservicio, id_usuario, fecha, es_laborable, created_at)
-                        VALUES (UUID(), ?, ?, ?, ?, NOW())
-                    `, [id_pservicio, req.session.userId, fechaFormateada, es_laborable]);
+                    // ✅ VALIDACIÓN EXISTENCIA: Verificar si ya existe una excepción para esta fecha y servicio
+                    const [exists] = await bd.query("SELECT id FROM pservicio_excepcion WHERE id_pservicio = ? AND fecha = ?", [id_pservicio, fechaFormateada]);
+
+                    if (exists.length > 0) {
+                        // Actualizar la excepción existente
+                        await bd.query("UPDATE pservicio_excepcion SET es_laborable = ? WHERE id_pservicio = ? AND fecha = ?", [es_laborable, id_pservicio, fechaFormateada]);
+                        //     console.log(`✅ Actualizada excepción para ${fechaFormateada}`);
+                    } else {
+                        // Insertar la nueva excepción
+                        await bd.query(`
+                            INSERT INTO pservicio_excepcion (id, id_pservicio, id_usuario, fecha, es_laborable, created_at)
+                            VALUES (UUID(), ?, ?, ?, ?, NOW())
+                        `, [id_pservicio, req.session.userId, fechaFormateada, es_laborable]);
+                        //     console.log(`✅ Insertada nueva excepción para ${fechaFormateada}`);
+                    }
                 }
             }
 

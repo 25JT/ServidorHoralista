@@ -37,7 +37,15 @@ app.post("/validarHoras", async (req, res) => {
             [id, fecha]
         );
 
-        // 4. Generar todas las horas posibles en el rango
+        //4. obtener fechas especiales
+        const [fechasEspeciales] = await bd.query(
+            `SELECT fecha, es_laborable FROM pservicio_excepcion WHERE id_pservicio = ?`,
+            [id]
+        );
+
+
+
+        // 5. Generar todas las horas posibles en el rango
         const horaInicio = parseInt(servicio[0].hora_inicio.split(':')[0]);
         const horaFin = parseInt(servicio[0].hora_fin.split(':')[0]);
 
@@ -49,17 +57,18 @@ app.post("/validarHoras", async (req, res) => {
             todasHoras.push(`${h.toString().padStart(2, '0')}:00:00`);
         }
 
-        // 5. Filtrar horas disponibles
+        // 6. Filtrar horas disponibles
         const horasOcupadas = ocupadas.map(c => c.hora);
         const horasDisponibles = todasHoras.filter(hora => !horasOcupadas.includes(hora));
 
 
-        // 6. Respuesta mejorada
+        // 7. Respuesta mejorada
         res.json({
             success: true,
             rango: servicio[0],
             ocupadas: horasOcupadas,
-            disponibles: horasDisponibles
+            disponibles: horasDisponibles,
+            fechasEspeciales: fechasEspeciales
         });
 
     } catch (error) {

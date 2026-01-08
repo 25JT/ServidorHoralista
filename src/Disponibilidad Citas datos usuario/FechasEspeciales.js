@@ -8,16 +8,22 @@ app.post("/fechas-especiales", verificarSesion, async (req, res) => {
         //  console.log("fechas-especiales", req.body);
 
         const { id } = req.body;
-        const [rows] = await bd.query("select fecha , es_laborable from pservicio_excepcion where id_pservicio  = ? ;", [id]);
+        const [rows] = await bd.query(`SELECT fecha, es_laborable 
+                                        FROM pservicio_excepcion 
+                                        WHERE id_pservicio = ?
+                                        AND fecha >= CURDATE() 
+                                        ORDER BY fecha ASC 
+                                        LIMIT 5;`, [id]);
 
         if (rows.length === 0) {
-            return res.status(404).json({ success: false, message: "No se encontraron fechas especiales para este servicio" });
+            return res.status(200).json({ success: false, message: "No se encontraron fechas especiales para este servicio", data: rows });
         }
+
         //  const rowsFiltradas = rows.filter((row) => row.es_laborable !== 0);
         return res.status(200).json({ success: true, message: "Fechas especiales obtenidas exitosamente", data: rows });
 
     } catch (error) {
         console.log(error);
-        res.status(500).json({ success: false, message: "Error al obtener ajustes", error: error.message });
+        res.status(500).json({ success: false, message: "Error al obtener fechas especiales", error: error.message });
     }
 })

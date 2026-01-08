@@ -18,11 +18,18 @@ export function diasTrabajo() {
             ON e.id_usuario = p.id_usuario
             WHERE p.id_usuario = ?`, [req.session.userId]);
 
-            // console.log("rows:", rows);
-            res.json({ success: true, data: rows });
+            console.log(rows.length, "linea 20");
+            if (rows.length === 0 || rows === null) {
+                const [rows] = await bd.query(`select dias_trabajo from  pservicio where id_usuario = ?`, [req.session.userId]);
+                res.json({ status: 200, success: true, data: rows });
+                return
+
+            }
+
+            res.json({ status: 200, success: true, data: rows });
         } catch (error) {
             console.error("Error al obtener ajustes:", error);
-            res.status(500).json({ success: false, message: "Error al obtener ajustes", error: error.message });
+            res.status(500).json({ status: 500, success: false, message: "Error al obtener ajustes", error: error.message });
         }
     })
 }

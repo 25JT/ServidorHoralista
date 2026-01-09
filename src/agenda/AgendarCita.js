@@ -10,7 +10,7 @@ app.post("/agendarcita", verificarSesion, async (req, res) => {
     try {
         // ✅ Usar el userId de la sesión (fuente de verdad)
         const userid = req.session.userId;
-        const { id, fecha, hora, mensaje, correo, nombre_establecimiento, telefono_establecimiento, nombre, apellido, direccion } = req.body;
+        const { id, fecha, hora, mensaje, correo, nombre_establecimiento, telefono_establecimiento, nombre, apellido, direccion, esFechaEspecial } = req.body;
 
         if (!id || !fecha || !hora) {
             return res.status(400).json({ success: false, message: "Faltan datos requeridos" });
@@ -28,26 +28,29 @@ app.post("/agendarcita", verificarSesion, async (req, res) => {
 
         const { hora_inicio, hora_fin, dias_trabajo } = servicioRows[0];
 
-        const [anio, mes, dia] = fecha.split("-");
-        const diaSemana = new Date(anio, mes - 1, dia)
-            .toLocaleString("es-ES", { weekday: "long" })
-            .toLowerCase();
+        // 1.1 Si no es una fecha especial (laborable), validar contra el horario general y días de trabajo
+        if (esFechaEspecial !== 1) {
+            const [anio, mes, dia] = fecha.split("-");
+            const diaSemana = new Date(anio, mes - 1, dia)
+                .toLocaleString("es-ES", { weekday: "long" })
+                .toLowerCase();
 
-        if (!dias_trabajo.toLowerCase().includes(diaSemana)) {
-            return res.json({
-                success: false,
-                fechaDisponible: false,
-                message: `El ${diaSemana} no está disponible. Días disponibles: ${dias_trabajo}`
-            });
-        }
+            if (!dias_trabajo.toLowerCase().includes(diaSemana)) {
+                return res.json({
+                    success: false,
+                    fechaDisponible: false,
+                    message: `El ${diaSemana} no está disponible. Días disponibles: ${dias_trabajo}`
+                });
+            }
 
-        if (hora < hora_inicio || hora > hora_fin) {
-            return res.json({
-                success: false,
-                horaDisponible: false,
-                message: `Fuera del horario de trabajo. El horario disponible es de ${hora_inicio} a ${hora_fin}`,
-                rango: { hora_inicio, hora_fin }
-            });
+            if (hora < hora_inicio || hora > hora_fin) {
+                return res.json({
+                    success: false,
+                    horaDisponible: false,
+                    message: `Fuera del horario de trabajo. El horario disponible es de ${hora_inicio} a ${hora_fin}`,
+                    rango: { hora_inicio, hora_fin }
+                });
+            }
         }
 
         // 2️ Verificar si ya hay cita en esa hora exacta

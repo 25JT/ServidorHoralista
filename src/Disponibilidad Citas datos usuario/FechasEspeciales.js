@@ -13,7 +13,7 @@ app.post("/fechas-especiales", verificarSesion, async (req, res) => {
                                         WHERE id_pservicio = ?
                                         AND fecha >= CURDATE() 
                                         ORDER BY fecha ASC 
-                                        LIMIT 5;`, [id]);
+                                        LIMIT 20;`, [id]);
 
         if (rows.length === 0) {
             return res.status(200).json({ success: false, message: "No se encontraron fechas especiales para este servicio", data: rows });

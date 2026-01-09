@@ -18,7 +18,7 @@ export function diasTrabajo() {
             ON e.id_usuario = p.id_usuario
             WHERE p.id_usuario = ?`, [req.session.userId]);
 
-            console.log(rows.length, "linea 20");
+
             if (rows.length === 0 || rows === null) {
                 const [rows] = await bd.query(`select dias_trabajo from  pservicio where id_usuario = ?`, [req.session.userId]);
                 res.json({ status: 200, success: true, data: rows });

@@ -16,6 +16,7 @@ app.post("/registroNegocio", verificarSesion, async (req, res) => {
             dias_trabajo,
             tipo_servicio,
             precio,
+            duracion,
 
 
         } = req.body.data;
@@ -41,9 +42,9 @@ app.post("/registroNegocio", verificarSesion, async (req, res) => {
 
         const [result] = await bd.execute(
             `INSERT INTO pservicio 
-              (id, id_usuario, nombre_establecimiento, telefono_establecimiento, direccion, hora_inicio, hora_fin, dias_trabajo, negocio_creado, Servicio,Precio, created_at, updated_at) 
+              (id, id_usuario, nombre_establecimiento, telefono_establecimiento, direccion, hora_inicio, hora_fin, dias_trabajo, negocio_creado, Servicio,Precio, intervaloCitas, created_at, updated_at) 
              VALUES 
-              (UUID(), ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, NOW(), NOW())`,
+              (UUID(), ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, NOW(), NOW())`,
             [
                 userid,
                 nombre_establecimiento,
@@ -54,6 +55,7 @@ app.post("/registroNegocio", verificarSesion, async (req, res) => {
                 dias,
                 tipo_servicio,
                 precio,
+                duracion,
             ]
         );
 

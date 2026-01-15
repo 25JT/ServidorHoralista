@@ -7,6 +7,7 @@ export function verificarSesion(req, res, next) {
         return res.status(401).json({
             success: false,
             message: "No estás autenticado. Por favor inicia sesión."
+
         });
     }
     next();

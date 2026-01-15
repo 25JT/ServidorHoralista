@@ -85,6 +85,9 @@ export function horasDisponibles() {
 export function diasExcepcionales() {
     app.post("/api/fechasExcep", verificarSesion, async (req, res) => {
         try {
+
+
+
             const diasExcepciones = req.body.diasExcepciones;
 
             // console.log("diasExcepciones recibidos:", diasExcepciones);
@@ -155,7 +158,49 @@ export function diasExcepcionales() {
     })
 }
 
+export function actualizacionDiasTrabajo() {
+    app.post("/api/diasTrabajoActualizar", verificarSesion, async (req, res) => {
+        try {
+            const diasTrabajoActualizar = req.body.currentDiasTrabajo;
+
+            const [rows] = await bd.query("select dias_trabajo from pservicio where id_usuario = ? ", [req.session.userId]);
+            let diasdelbd = ""
+
+            rows.map((rowbd) => {
+
+                diasdelbd = rowbd.dias_trabajo
+            })
+
+            const actualizaDias = diasTrabajoActualizar.map((dia) => dia)
+            let diasEnvio = ""
+            diasEnvio = actualizaDias.join(",")
+
+
+
+            if (diasdelbd === diasEnvio) {
+
+
+                return res.json({ success: false, message: "Los dias de trabajo son iguales" });
+
+            } else {
+
+                await bd.query("update pservicio set dias_trabajo = ? where id_usuario = ?", [diasEnvio, req.session.userId]);
+                res.json({ success: true, message: "Días de trabajo actualizados correctamente" });
+            }
+
+
+
+
+        } catch (error) {
+            console.log(error);
+            res.status(500).json({ success: false, message: "Error al actualizar los dias de trabajo", error: error.message });
+
+        }
+    })
+
+}
 horasDisponibles();
 diasExcepcionales();
 intervaloCitas();
 diasTrabajo();
+actualizacionDiasTrabajo();

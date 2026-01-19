@@ -10,6 +10,8 @@
     "mysql2": "^3.14.2",
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.5",
+    "pino": "^10.2.1",
+    "qrcode": "^1.5.4",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

@@ -46,6 +46,21 @@ CREATE TABLE `agenda` (
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `registro_envios_wpp`
+--
+
+CREATE TABLE `registro_envios_wpp` (
+  `id` char(36) NOT NULL,
+  `id_pservicio` char(36) NOT NULL,
+  `id_usuario` char(36) NOT NULL,
+  `id_socket` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `pservicio`
 --
 
@@ -131,6 +146,14 @@ ALTER TABLE `pservicio`
   ADD KEY `id_usuario` (`id_usuario`);
 
 --
+-- Indices de la tabla `registro_envios_wpp`
+--
+ALTER TABLE `registro_envios_wpp`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `id_pservicio` (`id_pservicio`),
+  ADD KEY `id_usuario` (`id_usuario`);
+
+--
 -- Indices de la tabla `token`
 --
 ALTER TABLE `token`
@@ -160,6 +183,13 @@ ALTER TABLE `agenda`
 --
 ALTER TABLE `pservicio`
   ADD CONSTRAINT `pservicio_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id`);
+
+--
+-- Filtros para la tabla `registro_envios_wpp`
+--
+ALTER TABLE `registro_envios_wpp`
+  ADD CONSTRAINT `registro_envios_wpp_ibfk_1` FOREIGN KEY (`id_pservicio`) REFERENCES `pservicio` (`id`),
+  ADD CONSTRAINT `registro_envios_wpp_ibfk_2` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id`);
 
 --
 -- Filtros para la tabla `token`

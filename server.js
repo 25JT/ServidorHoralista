@@ -20,7 +20,7 @@ import "./src/Cerrar sesion/CerrarSesion.js";
 import "./src/Restablecimientos/Restablecercontraseña.js";
 import "./src/Disponibilidad Citas datos usuario/FechasEspeciales.js";
 
-
+import "./src/VincularWhatsApp/VincularWhatsApp.js";
 
 
 const RutaFront = "http://localhost:4321";

@@ -11,8 +11,6 @@ cron.schedule("*/30 * * * *", () => {
     envioMsjWpp();
 
 });
-
-
 // =========================
 //  1. Recordatorios de citas
 // =========================
@@ -39,7 +37,7 @@ WHERE a.estado = 'pendiente'
 
         for (let row of rows) {
             const { id, fecha, hora, nombre, correo } = row;
-            const link = `https://${RutaFront}/Confirmarcita?id=${id}`;
+            const link = `${RutaFront}/Confirmarcita?id=${id}`;
 
             const mensaje = `Hola ${nombre}, tienes una cita el ${fecha} a las ${hora}.
   Por favor confirma tu asistencia en el siguiente enlace: ${link}`;

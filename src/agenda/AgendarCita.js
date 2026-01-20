@@ -72,7 +72,7 @@ app.post("/agendarcita", verificarSesion, async (req, res) => {
         const horaSeleccionada = new Date(`${fecha}T${hora}`);
         for (let cita of otrasCitasRows) {
             const horaExistente = new Date(`${fecha}T${cita.hora}`);
-            const diferenciaHoras = Math.abs((horaSeleccionada - horaExistente) / (1000 * 60 * 60));
+            const diferenciaHoras = Math.abs((horaSeleccionada - horaExistente) / (1000 * 60 * 30));
             if (diferenciaHoras < 1) {
                 return res.json({
                     success: false,

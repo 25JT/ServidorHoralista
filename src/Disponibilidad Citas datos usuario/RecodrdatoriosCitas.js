@@ -5,7 +5,7 @@ import cron from "node-cron";
 import envioMsjWpp from "../VincularWhatsApp/EnvioMsjWpp.js";
 
 // 📌 Recordatorios → cada hora en el minuto 0
-cron.schedule("* * * * *", () => {
+cron.schedule("*/30 * * * *", () => {
     console.log("⏰ Ejecutando recordatorio de citas...");
     recordatorioCitas();
     envioMsjWpp();

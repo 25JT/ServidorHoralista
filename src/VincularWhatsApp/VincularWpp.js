@@ -8,13 +8,16 @@ import path from "path";
 import crypto from "crypto";
 import pino from "pino";
 
+
+
 // Almacén de sesiones activas
-const sessions = new Map();
+export const sessions = new Map();
+export let negocio_id = null;
 
 // Logger para Baileys (nivel error para no saturar la consola)
 const logger = pino({ level: "error" });
 
-async function connectToWhatsApp(userid, negocio_id, res = null) {
+export async function connectToWhatsApp(userid, negocio_id, res = null) {
     const sessionDir = path.join(process.cwd(), "whatsapp_sessions", `session_${negocio_id}`);
 
     // Asegurar que el directorio existe
@@ -79,6 +82,7 @@ async function connectToWhatsApp(userid, negocio_id, res = null) {
                 }
             } else if (connection === "open") {
                 console.log(`WhatsApp conectado exitosamente para el negocio: ${negocio_id}`);
+
 
                 // Guardar o actualizar en la BD
                 try {
@@ -173,7 +177,7 @@ export function VincularWhatsApp() {
             const negocio_id = rows[0].id;
             const isConnected = sessions.has(negocio_id) && sessions.get(negocio_id).user;
 
-            console.log("WhatsApp conectado:", isConnected);
+            // console.log("WhatsApp conectado:", isConnected);
 
             res.status(200).json({
                 success: true,
@@ -242,6 +246,7 @@ async function inicializarSesionesAlArranque() {
                 if (rows.length > 0) {
                     const userid = rows[0].id_usuario;
                     console.log(`Restaurando sesión de WhatsApp para negocio ${negocio_id}...`);
+
                     connectToWhatsApp(userid, negocio_id).catch(err => {
                         console.error(`Error restaurando sesión para ${negocio_id}:`, err);
                     });

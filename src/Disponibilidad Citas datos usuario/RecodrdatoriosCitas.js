@@ -2,11 +2,14 @@ import bd from "../config/Bd.js";
 import createTransporter from "../config/correo.js";
 import { RutaFront } from "../RutaFront/Ruta.js";
 import cron from "node-cron";
+import envioMsjWpp from "../VincularWhatsApp/EnvioMsjWpp.js";
 
 // 📌 Recordatorios → cada hora en el minuto 0
-cron.schedule("*/30 * * * *", () => {
+cron.schedule("9 * * * *", () => {
     console.log("⏰ Ejecutando recordatorio de citas...");
     recordatorioCitas();
+    envioMsjWpp();
+
 });
 
 
@@ -32,9 +35,11 @@ WHERE a.estado = 'pendiente'
             AND DATE_ADD(NOW(), INTERVAL 1 HOUR);
       `);
 
+
+
         for (let row of rows) {
             const { id, fecha, hora, nombre, correo } = row;
-            const link = `${RutaFront}/Confirmarcita?id=${id}`;
+            const link = `https://${RutaFront}/Confirmarcita?id=${id}`;
 
             const mensaje = `Hola ${nombre}, tienes una cita el ${fecha} a las ${hora}.
   Por favor confirma tu asistencia en el siguiente enlace: ${link}`;

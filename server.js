@@ -19,8 +19,8 @@ import "./src/Ajustes/Ajustes.js";
 import "./src/Cerrar sesion/CerrarSesion.js";
 import "./src/Restablecimientos/Restablecercontraseña.js";
 import "./src/Disponibilidad Citas datos usuario/FechasEspeciales.js";
-import "./src/VincularWhatsApp/VincularWhatsApp.js";
-
+import "./src/VincularWhatsApp/VincularWpp.js";
+import "./src/VincularWhatsApp/EnvioMsjWpp.js";
 
 const RutaFront = "http://localhost:4321";
 //const RutaFront = "https://fromprueba-production.up.railway.app";// cmabiar por el dominio del front 

@@ -14,8 +14,8 @@ import pino from "pino";
 export const sessions = new Map();
 export let negocio_id = null;
 
-// Logger para Baileys (nivel error para no saturar la consola)
-const logger = pino({ level: "error" });
+// Logger para Baileys (nivel silent para eliminar ruidos internos de la librería)
+const logger = pino({ level: "silent" });
 
 export async function connectToWhatsApp(userid, negocio_id, res = null) {
     const sessionDir = path.join(process.cwd(), "whatsapp_sessions", `session_${negocio_id}`);
@@ -26,7 +26,7 @@ export async function connectToWhatsApp(userid, negocio_id, res = null) {
     }
 
     try {
-        const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
+        const { state, saveCreds } = await useMultiFileAuthState(sessionDir, { logger });
 
         // En Baileys versión 7+, la exportación por defecto suele ser la función misma
         const makeWASocketFunc = makeWASocket.default || makeWASocket;
@@ -60,14 +60,15 @@ export async function connectToWhatsApp(userid, negocio_id, res = null) {
             }
 
             if (connection === "close") {
-                const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-                console.log("Conexión cerrada. ¿Rearrancar?:", shouldReconnect);
+                const statusCode = lastDisconnect?.error?.output?.statusCode;
+                const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
                 if (shouldReconnect) {
+                    console.error(`[Aviso] Conexión perdida para negocio ${negocio_id}. Intentando reconectar...`);
                     // Reintentar conexión con el mismo userid
                     connectToWhatsApp(userid, negocio_id);
                 } else {
-                    console.log("Sesión cerrada permanentemente por el usuario.");
+                    console.error(`[CRÍTICO] Sesión cerrada permanentemente para negocio ${negocio_id}. El usuario cerró la sesión desde el teléfono.`);
 
                     // Limpiar BD y archivos locales
                     try {

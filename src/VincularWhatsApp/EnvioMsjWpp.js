@@ -79,7 +79,7 @@ ${link}
 
                         console.log(`✅ Mensaje enviado a ${nombre} (${telefono}) para el negocio ${id_pservicio}`);
                     } catch (errorEnvio) {
-                        console.error(`❌ Error al enviar mensaje a ${telefono}:`, errorEnvio);
+                        console.error(`❌ [ERROR CRÍTICO] Fallo al enviar mensaje a ${nombre} (${telefono}):`, errorEnvio.message);
 
                         // Actualizar error e intentos en registro_envios_wpp
                         await bd.query(`

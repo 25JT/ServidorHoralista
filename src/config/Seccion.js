@@ -1,25 +1,16 @@
 import express from "express";
 import cors from "cors";
 import session from 'express-session';
-import { RutaFront } from "../RutaFront/Ruta.js";
+import { AllowedOrigins, PrimaryRuta } from "../RutaFront/Ruta.js";
 
 export const app = express();
 app.set('trust proxy', 1); // ✅ Confiar en el proxy de Railway para cookies seguras
 
 // ✅ Configuración de CORS flexible
-const allowedOrigins = [
-    RutaFront,
-    "https://fromprueba-production.up.railway.app",
-    "https://horalista.netlify.app/"
-];
-
-// ✅ Detectar si estamos en producción (la nube)
-const esProduccion = RutaFront.includes("https");
-
 app.use(cors({
     origin: function (origin, callback) {
-        // Permitir peticiones sin origen (como Postman) o de orígenes permitidos
-        if (!origin || allowedOrigins.includes(origin) || (typeof origin === 'string' && (origin.includes('localhost') || origin.includes('127.0.0.1')))) {
+        // Permitir peticiones sin origen (como aplicaciones móviles o Postman) o de orígenes permitidos
+        if (!origin || AllowedOrigins.includes(origin) || (typeof origin === 'string' && (origin.includes('localhost') || origin.includes('127.0.0.1')))) {
             callback(null, true);
         } else {
             console.log('🚫 Origen bloqueado por CORS:', origin);
@@ -30,7 +21,6 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
-
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -43,8 +33,9 @@ app.use(session({
     cookie: {
         maxAge: 1000 * 60 * 60, // 1 hora
         httpOnly: true,
-        secure: esProduccion, // ✅ true en la nube (HTTPS), false en localhost
-        sameSite: esProduccion ? 'none' : 'lax' // ✅ 'none' para la nube, 'lax' para localhost
+        // ✅ secure true si NO es localhost (para que funcionen las cookies en Railway/Netlify)
+        secure: true,
+        sameSite: 'none' // ✅ Permite cookies entre diferentes dominios (Railway <-> Netlify)
     }
 }));
 

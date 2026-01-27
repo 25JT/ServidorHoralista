@@ -1,6 +1,6 @@
 import { app } from "../config/Seccion.js";
 import bd from "../config/Bd.js";
-import { RutaFront } from "../RutaFront/Ruta.js";
+import { PrimaryRuta } from "../RutaFront/Ruta.js";
 import crypto from "crypto";
 import createTransporter from "../config/correo.js";
 
@@ -31,7 +31,8 @@ app.post("/restablecer-contrasena", async (req, res) => {
             [tokenId, usuario.id, expiracion]
         );
 
-        const linkRestablecimiento = `${RutaFront}/restablecer-contrasena?id_token=${tokenId}`;
+        const origin = req.get('origin') || PrimaryRuta;
+        const linkRestablecimiento = `${origin}/restablecer-contrasena?id_token=${tokenId}`;
 
         const mailOptions = {
             from: process.env.correoUser,

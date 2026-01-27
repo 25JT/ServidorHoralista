@@ -2,7 +2,7 @@
 import { app } from "../config/Seccion.js";
 import bd from "../config/Bd.js";
 import createTransporter from "../config/correo.js";
-import { RutaFront } from "../RutaFront/Ruta.js";
+import { PrimaryRuta } from "../RutaFront/Ruta.js";
 import { verificarSesion } from "../middleware/autenticacion.js";
 
 // ✅ Protegido con verificarSesion
@@ -89,7 +89,8 @@ app.post("/agendarcita", verificarSesion, async (req, res) => {
         );
 
         // Envío de correo
-        const link = `${RutaFront}/Confirmarcita?id=${id}`;
+        const origin = req.get('origin') || PrimaryRuta;
+        const link = `${origin}/Confirmarcita?id=${id}`;
         const mensaje2 = `Gracias por agendar tu cita en ${nombre_establecimiento}`;
 
         // ✅ Corrección

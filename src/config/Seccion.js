@@ -9,7 +9,8 @@ app.set('trust proxy', 1); // ✅ Confiar en el proxy de Railway para cookies se
 // ✅ Configuración de CORS flexible
 const allowedOrigins = [
     RutaFront,
-    "https://fromprueba-production.up.railway.app"
+    "https://fromprueba-production.up.railway.app",
+    "https://horalista.netlify.app/"
 ];
 
 // ✅ Detectar si estamos en producción (la nube)

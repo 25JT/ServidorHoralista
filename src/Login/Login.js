@@ -35,7 +35,7 @@ app.post("/login", async (req, res) => {
         if (!contrasenaCorrecta) {
             return res.status(401).json({
                 success: false,
-                message: "Contraseña incorrecta"
+                message: "Contraseña incorrecta o correo electrónico no válido"
             });
         }
 

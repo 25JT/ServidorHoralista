@@ -9,7 +9,7 @@ import createTransporter from "../config/correo.js";
 //restablecer contraseña 
 app.post("/restablecer-contrasena", async (req, res) => {
     const { correo } = req.body;
-    console.log(req.body);
+    //  console.log(req.body);
 
     try {
         const [rows] = await bd.execute(

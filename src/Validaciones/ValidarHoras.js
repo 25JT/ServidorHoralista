@@ -60,7 +60,7 @@ app.post("/validarHoras", async (req, res) => {
         // 6. Filtrar horas disponibles
         const horasOcupadas = ocupadas.map(c => c.hora);
         const horasDisponibles = todasHoras.filter(hora => !horasOcupadas.includes(hora));
-        console.log(horasDisponibles);
+
 
 
         // 7. Respuesta mejorada

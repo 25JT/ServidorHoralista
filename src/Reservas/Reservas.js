@@ -39,6 +39,7 @@ ORDER BY a.fecha ASC, a.hora ASC;
     res.json({
       success: true,
       data: rows,
+      idPservicio,
       NombreEstablecimiento
     });
   } catch (error) {

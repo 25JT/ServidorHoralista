@@ -15,7 +15,8 @@ app.post("/mostrarCitas", verificarSesion, async (req, res) => {
         a.fecha,
         a.hora,
         a.estado,
-        p.nombre_establecimiento AS nombre_servicio
+        p.nombre_establecimiento AS nombre_servicio,
+        p.id AS id_pservicio
     FROM agenda AS a
     JOIN pservicio AS p 
         ON a.id_pservicio = p.id

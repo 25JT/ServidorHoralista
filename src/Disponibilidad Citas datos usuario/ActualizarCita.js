@@ -25,6 +25,7 @@ app.post("/actCita", verificarSesion, async (req, res) => {
         Actualizarcita(correo, nombre, nombre_establecimiento, fecha, hora);
         res.json({
             status: 200,
+            
             success: true,
             message: "Cita actualizada correctamente",
         });

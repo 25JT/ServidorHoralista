@@ -35,8 +35,8 @@ app.use(session({
         httpOnly: true,
         // ✅ secure true si NO es localhost (para que funcionen las cookies en Railway/Netlify)
 
-        secure: true,
-        sameSite: 'none' // ✅ Permite cookies entre diferentes dominios (Railway <-> Netlify)
+        secure: false,
+        sameSite: 'lax' // ✅ Permite cookies entre diferentes dominios (Railway <-> Netlify)
     }
 }));
 

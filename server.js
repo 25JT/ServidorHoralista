@@ -24,6 +24,7 @@ import "./src/VincularWhatsApp/EnvioMsjWpp.js";
 import "./src/Disponibilidad Citas datos usuario/ActualizarCita.js";
 import "./src/Ajustes/AjustesCapacidadDia.js";
 import "./src/TuPagina/identidad.js";
+import "./src/TuPagina/guardarIdentidad.js";
 
 //const RutaFront = "https://fromprueba-production.up.railway.app";// cmabiar por el dominio del front 
 

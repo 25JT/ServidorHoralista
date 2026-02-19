@@ -26,6 +26,8 @@ import "./src/Ajustes/AjustesCapacidadDia.js";
 import "./src/TuPagina/identidad.js";
 import "./src/TuPagina/guardarIdentidad.js";
 import "./src/ServiciosCatalogo/GuardarCatalogo.js";
+import "./src/ServiciosCatalogo/ObtenerCatalogo.js";
+import "./src/ServiciosCatalogo/EliminarCatalogo.js";
 
 //const RutaFront = "https://fromprueba-production.up.railway.app";// cmabiar por el dominio del front 
 

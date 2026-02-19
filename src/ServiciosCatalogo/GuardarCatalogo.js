@@ -40,6 +40,7 @@ app.post("/api/tienda/catalogo/guardar", upload.fields([
 
         const userid = req.session.userId;
 
+
         // IMPORTANTE: bd.query devuelve [filas, campos]. Debemos desestructurar para obtener solo las filas.
         const [pservicioRows] = await bd.query("select id from pservicio where id_usuario = ?", [userid]);
 

@@ -28,6 +28,6 @@ import "./src/TuPagina/guardarIdentidad.js";
 import "./src/ServiciosCatalogo/GuardarCatalogo.js";
 import "./src/ServiciosCatalogo/ObtenerCatalogo.js";
 import "./src/ServiciosCatalogo/EliminarCatalogo.js";
-
+import "./src/ServiciosCatalogo/ValidarCantidadCitas.js";
 //const RutaFront = "https://fromprueba-production.up.railway.app";// cmabiar por el dominio del front 
 

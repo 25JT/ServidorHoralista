@@ -10,7 +10,7 @@ app.post("/agendarcita", verificarSesion, async (req, res) => {
     try {
         // ✅ Usar el userId de la sesión (fuente de verdad)
         const userid = req.session.userId;
-        const { id, fecha, hora, mensaje, correo, nombre_establecimiento, telefono_establecimiento, nombre, apellido, direccion, esFechaEspecial } = req.body;
+        const { id, id_catalogo, fecha, hora, mensaje, correo, nombre_establecimiento, telefono_establecimiento, nombre, apellido, direccion, esFechaEspecial } = req.body;
 
         if (!id || !fecha || !hora) {
             return res.status(400).json({ success: false, message: "Faltan datos requeridos" });
@@ -18,7 +18,7 @@ app.post("/agendarcita", verificarSesion, async (req, res) => {
 
         // 1️ Verificar horario del barbero
         const [servicioRows] = await bd.query(
-            "SELECT hora_inicio, hora_fin, dias_trabajo FROM pservicio WHERE id = ?",
+            "SELECT hora_inicio, hora_fin, dias_trabajo, intervaloCitas FROM pservicio WHERE id = ?",
             [id]
         );
 
@@ -26,9 +26,24 @@ app.post("/agendarcita", verificarSesion, async (req, res) => {
             return res.status(404).json({ success: false, message: "Servicio no encontrado" });
         }
 
-        const { hora_inicio, hora_fin, dias_trabajo } = servicioRows[0];
+        const { hora_inicio, hora_fin, dias_trabajo, intervaloCitas } = servicioRows[0];
+        let duracionServicio = intervaloCitas || 60;
 
-        // 1.1 Si no es una fecha especial (laborable), validar contra el horario general y días de trabajo
+        // 1.1 Si hay id_catalogo válido, obtener su duración específica para este establecimiento
+        if (id_catalogo && id_catalogo !== "null") {
+            const [catalogo] = await bd.query(
+                "SELECT duracion FROM catalogos WHERE id = ? AND id_pservicio = ?",
+                [id_catalogo, id]
+            );
+            if (catalogo.length > 0 && catalogo[0].duracion) {
+                duracionServicio = parseInt(catalogo[0].duracion);
+            } else {
+                // Si el id_catalogo no pertenece a este establecimiento, no lo enviamos al INSERT
+                req.body.id_catalogo = null;
+            }
+        }
+
+        // 1.2 Si no es una fecha especial (laborable), validar contra el horario general y días de trabajo
         if (esFechaEspecial !== 1) {
             const [anio, mes, dia] = fecha.split("-");
             const diaSemana = new Date(anio, mes - 1, dia)
@@ -53,39 +68,69 @@ app.post("/agendarcita", verificarSesion, async (req, res) => {
             }
         }
 
-        // 2️ Verificar si ya hay cita en esa hora exacta
-        const [ocupadaRows] = await bd.query(
-            "SELECT 1 FROM agenda WHERE id_pservicio = ? AND fecha = ? AND hora = ? AND estado IN ('pendiente','confirmada')",
-            [id, fecha, hora]
+        // 2️ Verificar límites de capacidad y solapamientos
+
+        // 2.1 Obtener capacidad especial si existe
+        const [espRows] = await bd.query(
+            "SELECT hora_inicio, hora_fin, total_citas FROM pservicio_capacidad_dia WHERE id_pservicio = ? AND fecha = ? AND activo = 1",
+            [id, fecha]
         );
+        const esp = espRows[0];
 
-        if (ocupadaRows.length > 0) {
-            return res.json({ success: false, horaDisponible: false, message: "La hora ya está ocupada" });
-        }
-
-        // 3️ Verificar diferencia mínima de 1 hora con otras citas
+        // 2.2 Obtener todas las citas del día para verificar solapamientos y conteo
         const [otrasCitasRows] = await bd.query(
-            "SELECT hora FROM agenda WHERE id_pservicio = ? AND fecha = ? AND estado IN ('pendiente','confirmada')",
+            `SELECT a.hora, c.duracion 
+             FROM agenda a 
+             LEFT JOIN catalogos c ON a.id_catalogo = c.id
+             WHERE a.id_pservicio = ? AND a.fecha = ? AND a.estado IN ('pendiente','confirmada','reservada')`,
             [id, fecha]
         );
 
-        const horaSeleccionada = new Date(`${fecha}T${hora}`);
+        const parseToMinutes = (timeStr) => {
+            if (!timeStr) return 0;
+            const [h, m] = timeStr.split(':').map(Number);
+            return h * 60 + (m || 0);
+        };
+
+        const nuevaCitaInicio = parseToMinutes(hora);
+        const nuevaCitaFin = nuevaCitaInicio + duracionServicio;
+
+        // A. Validar que no exceda la hora de cierre (especial o general)
+        const horaCierreMin = esp ? parseToMinutes(esp.hora_fin) : parseToMinutes(hora_fin);
+        if (nuevaCitaFin > horaCierreMin) {
+            return res.json({
+                success: false,
+                message: `La duración del servicio excede el horario de cierre (${esp ? esp.hora_fin : hora_fin})`
+            });
+        }
+
+        // B. Validar límite total de citas (si hay capacidad especial)
+        if (esp && esp.total_citas > 0 && otrasCitasRows.length >= esp.total_citas) {
+            return res.json({
+                success: false,
+                message: "Capacidad máxima de citas para este día alcanzada."
+            });
+        }
+
+        // C. Verificar solapamientos de rango
         for (let cita of otrasCitasRows) {
-            const horaExistente = new Date(`${fecha}T${cita.hora}`);
-            const diferenciaHoras = Math.abs((horaSeleccionada - horaExistente) / (1000 * 60 * 30));
-            if (diferenciaHoras < 1) {
+            const existenteInicio = parseToMinutes(cita.hora);
+            const existenteDuracion = cita.duracion ? parseInt(cita.duracion) : (intervaloCitas || 60);
+            const existenteFin = existenteInicio + existenteDuracion;
+
+            if (nuevaCitaInicio < existenteFin && nuevaCitaFin > existenteInicio) {
                 return res.json({
                     success: false,
                     horaDisponible: false,
-                    message: "Debe haber al menos 1 hora entre citas"
+                    message: `El rango seleccionado se solapa con otra cita (${cita.hora})`
                 });
             }
         }
 
-        // 4️ Insertar en agenda
+        // 3️ Insertar en agenda
         await bd.query(
-            "INSERT INTO agenda (id, id_pservicio, id_usuario_cliente, fecha, hora, estado, notas) VALUES (UUID(), ?, ?, ?, ?, 'pendiente', ?)",
-            [id, userid, fecha, hora, mensaje || ""]
+            "INSERT INTO agenda (id, id_pservicio, id_catalogo, id_usuario_cliente, fecha, hora, estado, notas) VALUES (UUID(), ?, ?, ?, ?, ?, 'pendiente', ?)",
+            [id, id_catalogo || null, userid, fecha, hora, mensaje || ""]
         );
 
         // Envío de correo

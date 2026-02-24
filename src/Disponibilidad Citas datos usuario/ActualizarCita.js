@@ -15,17 +15,19 @@ app.post("/actCita", verificarSesion, async (req, res) => {
     console.log(req.body);
 
     try {
+        const id_catalogo = req.body.id_catalogo;
+
         await bd.execute(
             `UPDATE agenda 
-            SET fecha = ?, hora = ? , notas = ?
+            SET fecha = ?, hora = ? , notas = ?, id_catalogo = COALESCE(?, id_catalogo)
             WHERE id = ?`,
-            [fecha, hora, mensaje, citaId]
+            [fecha, hora, mensaje, id_catalogo || null, citaId]
         );
 
         Actualizarcita(correo, nombre, nombre_establecimiento, fecha, hora);
         res.json({
             status: 200,
-            
+
             success: true,
             message: "Cita actualizada correctamente",
         });

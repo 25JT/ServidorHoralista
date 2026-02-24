@@ -15,11 +15,14 @@ app.post("/mostrarCitas", verificarSesion, async (req, res) => {
         a.fecha,
         a.hora,
         a.estado,
-        p.nombre_establecimiento AS nombre_servicio,
+        p.nombre_establecimiento AS nombre_establecimiento,
+        COALESCE(c.nombre_servicio, 'Servicio General') AS servicio,
         p.id AS id_pservicio
     FROM agenda AS a
     JOIN pservicio AS p 
         ON a.id_pservicio = p.id
+    LEFT JOIN catalogos AS c
+        ON a.id_catalogo = c.id
     WHERE a.id_usuario_cliente = ?
       AND a.fecha >= CURDATE()
     ORDER BY a.fecha, a.hora;

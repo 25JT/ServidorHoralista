@@ -18,20 +18,23 @@ app.post("/api/Reservas", verificarSesion, async (req, res) => {
     }
     const idPservicio = id[0].id;
     const NombreEstablecimiento = id[0].nombre_establecimiento;
-    const [rows] = await bd.query(`   SELECT
+    const [rows] = await bd.query(`SELECT
     a.hora,
     a.fecha,
     GROUP_CONCAT(a.notas) AS notas,
     a.estado,
     u.nombre,
+    COALESCE(c.nombre_servicio, 'Servicio General') AS servicio,
     ANY_VALUE(u.id) AS usuario_id,
     ANY_VALUE(a.id) AS agenda_id
 FROM agenda AS a
 JOIN usuario AS u
     ON a.id_usuario_cliente = u.id
+LEFT JOIN catalogos AS c
+    ON a.id_catalogo = c.id
 WHERE a.id_pservicio = ?
   AND a.fecha >= CURDATE()
-GROUP BY a.fecha, a.hora, a.estado, u.nombre
+GROUP BY a.fecha, a.hora, a.estado, u.nombre, c.nombre_servicio
 ORDER BY a.fecha ASC, a.hora ASC;
 
 

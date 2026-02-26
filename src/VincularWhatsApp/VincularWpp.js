@@ -1,7 +1,7 @@
 import { app } from "../config/Seccion.js";
 import bd from "../config/Bd.js";
 import { verificarSesion } from "../middleware/autenticacion.js";
-import makeWASocket, { useMultiFileAuthState, DisconnectReason } from "baileys";
+import makeWASocket, { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } from "baileys";
 import QRCode from "qrcode";
 import fs from "fs";
 import path from "path";
@@ -14,10 +14,14 @@ import pino from "pino";
 export const sessions = new Map();
 export let negocio_id = null;
 
-// Logger para Baileys (nivel silent para eliminar ruidos internos de la librería)
+// Logger para Baileys (nivel info para diagnosticar errores de conexión)
 const logger = pino({ level: "silent" });
 
-export async function connectToWhatsApp(userid, negocio_id, res = null) {
+// Contador de reintentos de reconexión por negocio
+const reconnectAttempts = new Map();
+const MAX_RECONNECT_ATTEMPTS = 3;
+
+export async function connectToWhatsApp(userid, negocio_id, res = null, retryCount = 0) {
     const sessionDir = path.join(process.cwd(), "whatsapp_sessions", `session_${negocio_id}`);
 
     // Asegurar que el directorio existe
@@ -26,6 +30,9 @@ export async function connectToWhatsApp(userid, negocio_id, res = null) {
     }
 
     try {
+        const { version, isLatest } = await fetchLatestBaileysVersion().catch(() => ({ version: [2, 3000, 1017539718], isLatest: false }));
+        console.log(`[WhatsApp] Usando v${version.join(".")} (isLatest: ${isLatest})`);
+
         const { state, saveCreds } = await useMultiFileAuthState(sessionDir, { logger });
 
         // En Baileys versión 7+, la exportación por defecto suele ser la función misma
@@ -33,10 +40,16 @@ export async function connectToWhatsApp(userid, negocio_id, res = null) {
         const sock = makeWASocketFunc({
             auth: state,
             printQRInTerminal: false,
-            logger: logger, // Pasar el logger configurado aquí
+            logger: logger,
+            version,
+            browser: ["ServidorHoralista", "Chrome", "1.0.0"],
+            connectTimeoutMs: 60000,
+            defaultQueryTimeoutMs: 0,
+            syncFullHistory: false,
         });
 
         sessions.set(negocio_id, sock);
+        reconnectAttempts.set(negocio_id, retryCount);
 
         sock.ev.on("connection.update", async (update) => {
             const { connection, lastDisconnect, qr } = update;
@@ -61,14 +74,46 @@ export async function connectToWhatsApp(userid, negocio_id, res = null) {
 
             if (connection === "close") {
                 const statusCode = lastDisconnect?.error?.output?.statusCode;
+                const reason = lastDisconnect?.error?.message || "Unknown reason";
                 const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
+                console.error(`[Aviso] Conexión cerrada para negocio ${negocio_id}. Motivo: ${reason} (Status: ${statusCode})`);
+                sessions.delete(negocio_id);
+
+                // Si se cierra ANTES de enviar el QR y hay una respuesta pendiente
+                if (res && !res.headersSent) {
+                    res.status(500).json({
+                        success: false,
+                        message: "La conexión con WhatsApp se cerró prematuramente. Inténtalo de nuevo."
+                    });
+                }
+
                 if (shouldReconnect) {
-                    console.error(`[Aviso] Conexión perdida para negocio ${negocio_id}. Intentando reconectar...`);
-                    // Reintentar conexión con el mismo userid
-                    connectToWhatsApp(userid, negocio_id);
+                    const currentAttempts = reconnectAttempts.get(negocio_id) ?? 0;
+
+                    if (currentAttempts < MAX_RECONNECT_ATTEMPTS) {
+                        const delay = Math.pow(2, currentAttempts) * 2000; // 2s, 4s, 8s
+                        console.error(`[Aviso] Conexión perdida para negocio ${negocio_id}. Reintento ${currentAttempts + 1}/${MAX_RECONNECT_ATTEMPTS} en ${delay / 1000}s...`);
+                        setTimeout(() => {
+                            connectToWhatsApp(userid, negocio_id, null, currentAttempts + 1);
+                        }, delay);
+                    } else {
+                        console.error(`[CRÍTICO] Máximo de reintentos alcanzado para negocio ${negocio_id}. Limpiando sesión corrupta para permitir nuevo QR.`);
+                        reconnectAttempts.delete(negocio_id);
+                        // Limpiar sesión local dañada para que el próximo intento genere QR fresco
+                        if (fs.existsSync(sessionDir)) {
+                            fs.rmSync(sessionDir, { recursive: true, force: true });
+                        }
+                        // Limpiar BD también ya que la sesión no es recuperable
+                        try {
+                            await bd.execute("DELETE FROM registro_envios_wpp WHERE id_pservicio = ?", [negocio_id]);
+                        } catch (dbErr) {
+                            console.error("Error eliminando registro de BD:", dbErr);
+                        }
+                    }
                 } else {
                     console.error(`[CRÍTICO] Sesión cerrada permanentemente para negocio ${negocio_id}. El usuario cerró la sesión desde el teléfono.`);
+                    reconnectAttempts.delete(negocio_id);
 
                     // Limpiar BD y archivos locales
                     try {
@@ -78,12 +123,13 @@ export async function connectToWhatsApp(userid, negocio_id, res = null) {
                         console.error("Error eliminando registro de BD:", dbErr);
                     }
 
-                    fs.rmSync(sessionDir, { recursive: true, force: true });
-                    sessions.delete(negocio_id);
+                    if (fs.existsSync(sessionDir)) {
+                        fs.rmSync(sessionDir, { recursive: true, force: true });
+                    }
                 }
             } else if (connection === "open") {
                 console.log(`WhatsApp conectado exitosamente para el negocio: ${negocio_id}`);
-
+                reconnectAttempts.delete(negocio_id); // Resetear contador al conectar
 
                 // Guardar o actualizar en la BD
                 try {
@@ -108,12 +154,10 @@ export async function connectToWhatsApp(userid, negocio_id, res = null) {
                 }
 
                 if (res && !res.headersSent) {
-                    // NOTA: Esta respuesta solo se envía si la sesión ya estaba abierta desde el principio.
-                    // Si se envió un QR antes, esta parte no se ejecutará porque la petición HTTP ya terminó.
                     console.log(`[HTTP] Confirmando conexión abierta para negocio: ${negocio_id}`);
                     res.status(200).json({ success: true, message: "WhatsApp conectado" });
                 } else if (res && res.headersSent) {
-                    console.log(`[Aviso] Conexión abierta para ${negocio_id}, pero la respuesta HTTP ya fue enviada (probablemente con un QR). El frontend debe detectar el cambio vía /estadoWhatsApp.`);
+                    console.log(`[Aviso] Conexión abierta para ${negocio_id}, pero la respuesta HTTP ya fue enviada (QR previo). El frontend detectará el cambio vía /estadoWhatsApp.`);
                 }
             }
         });
@@ -157,6 +201,12 @@ export function VincularWhatsApp() {
                         alreadyConnected: true
                     });
                 }
+                // Hay un socket activo pero no autenticado (sesión fantasma).
+                // Cerrarlo limpiamente antes de crear uno nuevo para el QR.
+                console.log(`[Aviso] Socket fantasma detectado para negocio ${negocio_id}. Cerrando antes de generar nuevo QR...`);
+                try { sock.end(); } catch (_) { }
+                sessions.delete(negocio_id);
+                reconnectAttempts.delete(negocio_id);
             }
 
             await connectToWhatsApp(userid, negocio_id, res);

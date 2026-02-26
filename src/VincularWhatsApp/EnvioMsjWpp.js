@@ -2,10 +2,6 @@ import bd from "../config/Bd.js";
 import { sessions } from "./VincularWpp.js";
 import { RutaFront } from "../RutaFront/Ruta.js";
 
-
-
-
-
 export default async function envioMsjWpp() {
     try {
         const [rows] = await bd.query(`

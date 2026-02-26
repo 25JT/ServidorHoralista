@@ -4,8 +4,8 @@ import { PrimaryRuta } from "../RutaFront/Ruta.js";
 import cron from "node-cron";
 import envioMsjWpp from "../VincularWhatsApp/EnvioMsjWpp.js";
 
-// 📌 Recordatorios → cada hora en el minuto 0
-cron.schedule("*/15 * * * *", () => {
+// 📌 Recordatorios → cada 15 minutos en el segundo 0
+cron.schedule("0 */15 * * * *", () => {
     console.log("⏰ Ejecutando recordatorio de citas...");
     recordatorioCitas();
     envioMsjWpp();

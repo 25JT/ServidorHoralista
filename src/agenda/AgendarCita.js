@@ -4,6 +4,7 @@ import bd from "../config/Bd.js";
 import createTransporter from "../config/correo.js";
 import { PrimaryRuta } from "../RutaFront/Ruta.js";
 import { verificarSesion } from "../middleware/autenticacion.js";
+import { sessions } from "../VincularWhatsApp/VincularWpp.js";
 
 // ✅ Protegido con verificarSesion
 app.post("/agendarcita", verificarSesion, async (req, res) => {
@@ -157,6 +158,50 @@ app.post("/agendarcita", verificarSesion, async (req, res) => {
     <p>¡Te esperamos!<br><b>${nombre_establecimiento}</b></p>
   `,
         });
+
+        // Envio de recordatorio por WhatsApp 
+        const [telefonoUsuarioRows] = await bd.query(
+            "SELECT telefono FROM usuario WHERE id = ?",
+            [userid]
+        );
+        const [secionNegocioWppRows] = await bd.query(
+            "SELECT id_socket FROM registro_envios_wpp WHERE id_pservicio = ?",
+            [id]
+        );
+
+        if (secionNegocioWppRows.length > 0 && sessions.has(id)) {
+            const sock = sessions.get(id);
+            const telefono = telefonoUsuarioRows[0].telefono;
+
+            if (sock.user && telefono) {
+                const mensajeWpp = `Hola *${nombre} ${apellido}* 👋, tu cita para el *${fecha}* a las *${hora}* ha sido agendada con éxito en *${nombre_establecimiento}*. 
+
+Recuerda que una hora antes de tu cita recibirás un correo recordatorio para confirmar tu asistencia. 
+
+Si no puedes asistir, cancela la cita desde el menú de tus citas. ¡Te esperamos!`;
+
+                // Formatear número: quitar caracteres no numéricos y asegurar prefijo 57 si es necesario
+                let numeroLimpio = telefono.replace(/\D/g, "");
+                if (numeroLimpio.length === 10) {
+                    numeroLimpio = "57" + numeroLimpio;
+                }
+                const numeroWpp = `${numeroLimpio}@s.whatsapp.net`;
+
+                try {
+                    await sock.sendMessage(numeroWpp, { text: mensajeWpp });
+                    console.log(`✅ Mensaje de WhatsApp enviado a ${nombre} (${telefono}) para el negocio ${id}`);
+                } catch (errorWpp) {
+                    console.error(`❌ Error al enviar mensaje de WhatsApp para el negocio ${id}:`, errorWpp.message);
+                }
+            } else {
+                console.log(`⚠️ No se pudo enviar WhatsApp: Sesión de negocio ${id} no autenticada o teléfono de usuario no encontrado.`);
+            }
+        } else {
+            console.log(`⚠️ Negocio ${id} no tiene sesión de WhatsApp activa.`);
+        }
+
+
+
 
         res.json({
             success: true,

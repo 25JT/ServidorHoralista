@@ -1,7 +1,7 @@
 import { app } from "../config/Seccion.js";
 import bd from "../config/Bd.js";
 import createTransporter from "../config/correo.js";
-
+import { sessions } from "../VincularWhatsApp/VincularWpp.js";
 
 
 //cancelar cita de usuario por su cliente
@@ -24,8 +24,10 @@ app.post("/cancelar-cita", async (req, res) => {
         SELECT 
             cliente.nombre AS nombre_cliente,
             cliente.correo AS correo_cliente,
+            cliente.telefono AS telefono_cliente,
             prestador.nombre AS nombre_prestador,
             prestador.correo AS correo_prestador,
+            a.id_pservicio,
             a.fecha,
             a.hora,
             a.estado
@@ -153,6 +155,34 @@ app.post("/cancelar-cita", async (req, res) => {
         } catch (emailError) {
             console.error("Error enviando correos:", emailError);
             // No fallar la operación principal por errores de correo
+        }
+
+        // Envio de notificación por WhatsApp (Cancelación)
+        try {
+            const id_pservicio = datos.id_pservicio;
+            const telefono = datos.telefono_cliente;
+
+            if (sessions.has(id_pservicio)) {
+                const sock = sessions.get(id_pservicio);
+
+                if (sock.user && telefono) {
+                    const mensajeWpp = `Hola *${datos.nombre_cliente}* 👋, lamentamos informarte que tu cita con *${datos.nombre_prestador}* para el día *${fechaFormateada}* a las *${horaFormateada}* ha sido *CANCELADA* ❌.
+
+Si crees que esto es un error, por favor contacta con el establecimiento.`;
+
+                    // Formatear número
+                    let numeroLimpio = telefono.replace(/\D/g, "");
+                    if (numeroLimpio.length === 10) {
+                        numeroLimpio = "57" + numeroLimpio;
+                    }
+                    const numeroWpp = `${numeroLimpio}@s.whatsapp.net`;
+
+                    await sock.sendMessage(numeroWpp, { text: mensajeWpp });
+                    console.log(`✅ Mensaje de WhatsApp (Cancelación) enviado a ${datos.nombre_cliente} (${telefono})`);
+                }
+            }
+        } catch (wppError) {
+            console.error("Error enviando notificación de WhatsApp:", wppError);
         }
 
         res.json({ success: true, message: "Cita cancelada exitosamente" });

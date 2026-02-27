@@ -94,5 +94,6 @@ ${link}
     } catch (error) {
         console.error("Error crítico en envioMsjWpp:", error);
     }
+    return;
 }
 

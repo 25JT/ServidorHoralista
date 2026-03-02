@@ -6,7 +6,7 @@ import envioMsjWpp from "../VincularWhatsApp/EnvioMsjWpp.js";
 
 // 📌 Recordatorios → cada 15 minutos en el segundo 0
 cron.schedule("0 */1 * * * *", () => {
-    // console.log("⏰ Ejecutando recordatorio de citas...");
+    console.log("⏰ Ejecutando recordatorio de citas...");
     recordatorioCitas();
     envioMsjWpp();
 

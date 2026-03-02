@@ -30,5 +30,7 @@ import "./src/ServiciosCatalogo/ObtenerCatalogo.js";
 import "./src/ServiciosCatalogo/EliminarCatalogo.js";
 import "./src/ServiciosCatalogo/ValidarCantidadCitas.js";
 import "./src/sliderBar/ObtenerImagenUsuario.js";
+import "./src/TourTutos/TourAjustes.js";
+import "./src/TourTutos/TourGeneral.js";
 //const RutaFront = "https://fromprueba-production.up.railway.app";// cmabiar por el dominio del front 
 

@@ -1,5 +1,5 @@
 import { app } from "../config/Seccion.js";
-import bd from "../config/Bd.js";
+import { bd } from "../config/Bd.js";
 import { verificarSesion } from "../middleware/autenticacion.js";
 
 app.get("/api/usuario/obtenerImagenUsuario", verificarSesion, async (req, res) => {

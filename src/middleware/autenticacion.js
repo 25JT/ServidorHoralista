@@ -57,3 +57,16 @@ export function verificarAutenticacionYPropietario(req, res, next) {
 
     next();
 }
+
+
+export function verificarNotificacion(req, res, next) {
+    const id_notificacion = req.session.id_notificacion;
+    const id_notificacion_front = req.body.id;
+    if (id_notificacion !== id_notificacion_front) {
+        return res.status(403).json({
+            success: false,
+            message: "No tienes permiso para modificar estos datos."
+        });
+    }
+    next();
+}

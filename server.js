@@ -33,5 +33,6 @@ import "./src/sliderBar/ObtenerImagenUsuario.js";
 import "./src/TourTutos/TourAjustes.js";
 import "./src/TourTutos/TourGeneral.js";
 import "./src/Notificacion/ValidarNotificaciones.js";
+import "./src/Notificacion/Calificar.js";
 //const RutaFront = "https://fromprueba-production.up.railway.app";// cmabiar por el dominio del front 
 

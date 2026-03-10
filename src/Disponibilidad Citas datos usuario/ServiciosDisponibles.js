@@ -4,7 +4,27 @@ import bd from "../config/Bd.js";
 
 app.get("/serviciosDisponibles", async (req, res) => {
     try {
-        const [rows] = await bd.query("SELECT nombre_establecimiento, telefono_establecimiento, direccion, hora_inicio, hora_fin, dias_trabajo, Servicio, precio, id, descripcion, logo, banner FROM pservicio");
+        const [rows] = await bd.query(`
+  
+SELECT 
+    p.nombre_establecimiento, 
+    p.telefono_establecimiento, 
+    p.direccion, 
+    p.hora_inicio, 
+    p.hora_fin, 
+    p.dias_trabajo, 
+    p.Servicio, 
+    p.precio, 
+    p.id, 
+    p.descripcion, 
+    p.logo, 
+    p.banner,
+    ROUND(IFNULL(AVG(c.calificacion), 0), 1) AS media_calificacion,
+    COUNT(c.calificacion) AS total_calificaciones
+FROM pservicio p
+LEFT JOIN calificacion c ON p.id = c.id_pservicio
+GROUP BY p.id;
+        `);
         res.json({
             success: true,
             data: rows,

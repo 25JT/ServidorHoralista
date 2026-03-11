@@ -2,8 +2,10 @@ import express from "express";
 import cors from "cors";
 import session from 'express-session';
 import cookieParser from 'cookie-parser';
-import { AllowedOrigins, PrimaryRuta } from "../RutaFront/Ruta.js";
+import dotenv from "dotenv";
 
+import { AllowedOrigins, PrimaryRuta } from "../RutaFront/Ruta.js";
+dotenv.config();
 export const app = express();
 app.set('trust proxy', 1); // ✅ Confiar en el proxy de Railway para cookies seguras
 
@@ -29,7 +31,7 @@ app.use(cookieParser());
 
 // ✅ Configuración de sesiones DINÁMICA
 app.use(session({
-    secret: 'clave_secreta_segura', // ⚠️ En producción usa una variable de entorno
+    secret: process.env.SESSION_SECRET, // ⚠️ En producción usa una variable de entorno
     resave: true, // Forzar guardado para asegurar que el MaxAge se actualice
     saveUninitialized: false,
     rolling: true, // Renueva la sesión en cada petición
@@ -37,8 +39,8 @@ app.use(session({
     cookie: {
         maxAge: 1000 * 60 * 60 * 24, // 24 horas
         httpOnly: true,
-        secure: true, 
-        sameSite: 'none', 
+        secure: true,
+        sameSite: 'none',
         path: '/'
     }
 }));

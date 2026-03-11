@@ -92,7 +92,7 @@ app.post("/login", async (req, res) => {
             maxAge: 30 * 24 * 60 * 60 * 1000, // 30 días
             httpOnly: true,
             secure: true, // ✅ Obligatorio para sameSite: 'none'
-            sameSite: 'none', 
+            sameSite: 'none',
             path: '/'
         });
 

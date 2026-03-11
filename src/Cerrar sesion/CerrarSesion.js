@@ -26,8 +26,8 @@ app.post("/logout", async (req, res) => {
             });
         }
 
-        res.clearCookie('session_horalista', { path: '/', secure: true, sameSite: 'none' }); 
-        res.clearCookie('remember_token', { path: '/', secure: true, sameSite: 'none' });
+        res.clearCookie('session_horalista', { path: '/', secure: true, sameSite: 'none' }); // borra la cookie de sesión
+        res.clearCookie('remember_token', { path: '/', secure: true, sameSite: 'none' }); // borra la cookie de persistencia
         res.json({
             success: true,
             message: "Sesión cerrada correctamente"

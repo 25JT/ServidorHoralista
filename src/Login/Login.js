@@ -65,6 +65,9 @@ app.post("/login", async (req, res) => {
         req.session.negocio_creado = negocio_creado;
 
         // 🆔 Generar Persistent Token (Remember Me)
+        // Limpiar solo tokens expirados para no cerrar sesión en otros dispositivos
+        await bd.query("DELETE FROM remember_token_seccion WHERE expires_at < NOW()");
+
         const persistentToken = uuidv4();
         const tokenHash = crypto.createHash('sha256').update(persistentToken).digest('hex');
         const tokenExpiracion = new Date();
@@ -78,8 +81,8 @@ app.post("/login", async (req, res) => {
         res.cookie('remember_token', persistentToken, {
             maxAge: 30 * 24 * 60 * 60 * 1000, // 30 días
             httpOnly: true,
-            secure: true,
-            sameSite: 'none',
+            secure: true, // ✅ Obligatorio para cross-site (Railway <-> Netlify)
+            sameSite: 'none', // ✅ Obligatorio para cross-site
             path: '/'
         });
 

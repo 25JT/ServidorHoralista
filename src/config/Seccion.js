@@ -35,11 +35,11 @@ app.use(session({
     rolling: true, // Renueva la sesión en cada petición
     name: 'session_horalista', // Nombre personalizado para evitar colisiones
     cookie: {
-        maxAge: 1000 * 60 * 60 * 24, // Aumentado a 24 horas para facilitar la persistencia
+        maxAge: 1000 * 60 * 60 * 24, // 24 horas
         httpOnly: true,
         secure: true, // ✅ Obligatorio para sameSite: 'none'
-        sameSite: 'none', // ✅ Permite cookies entre diferentes dominios (Railway <-> Netlify)
-        path: '/' // Asegurar que sea global
+        sameSite: 'none', // ✅ Necesario para Railway <-> Netlify
+        path: '/'
     }
 }));
 

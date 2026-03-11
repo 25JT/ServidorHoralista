@@ -62,8 +62,8 @@ export async function verificarSesion(req, res, next) {
                     res.cookie('remember_token', nuevoToken, {
                         maxAge: 30 * 24 * 60 * 60 * 1000, // 30 días
                         httpOnly: true,
-                        secure: false, 
-                        sameSite: 'lax',
+                        secure: true, 
+                        sameSite: 'none',
                         path: '/'
                     });
 

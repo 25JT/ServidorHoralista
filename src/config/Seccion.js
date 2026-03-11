@@ -37,7 +37,7 @@ app.use(session({
     cookie: {
         maxAge: 1000 * 60 * 60 * 24, // Aumentado a 24 horas para facilitar la persistencia
         httpOnly: true,
-        secure: true, // true solo con HTTPS
+        secure: true, // ✅ Obligatorio para sameSite: 'none'
         sameSite: 'none', // ✅ Permite cookies entre diferentes dominios (Railway <-> Netlify)
         path: '/' // Asegurar que sea global
     }

@@ -37,12 +37,12 @@ app.use(session({
     cookie: {
         maxAge: 1000 * 60 * 60 * 24, // 24 horas
         httpOnly: true,
-        secure: true, // ✅ Obligatorio para sameSite: 'none'
-        sameSite: 'none', // ✅ Necesario para Railway <-> Netlify
+        secure: true, 
+        sameSite: 'none', 
         path: '/'
     }
 }));
-
+console.trace('Session cookie configured with secure: true, sameSite: none');
 
 
 // 🔍 Middleware de debug para verificar sesiones (REMOVER EN PRODUCCIÓN)

@@ -65,24 +65,34 @@ app.post("/login", async (req, res) => {
         req.session.negocio_creado = negocio_creado;
 
         // 🆔 Generar Persistent Token (Remember Me)
-        // Limpiar solo tokens expirados para no cerrar sesión en otros dispositivos
-        await bd.query("DELETE FROM remember_token_seccion WHERE expires_at < NOW()");
-
         const persistentToken = uuidv4();
         const tokenHash = crypto.createHash('sha256').update(persistentToken).digest('hex');
         const tokenExpiracion = new Date();
         tokenExpiracion.setDate(tokenExpiracion.getDate() + 30); // 30 días
+        const expiresString = tokenExpiracion.toISOString().slice(0, 19).replace('T', ' ');
 
-        await bd.query(
-            "INSERT INTO remember_token_seccion (id, id_usuario, token_hash, expires_at) VALUES (?, ?, ?, ?)",
-            [uuidv4(), usuario.id, tokenHash, tokenExpiracion.toISOString().slice(0, 19).replace('T', ' ')]
-        );
+        // Verificar si el usuario ya tiene un token
+        const [existingToken] = await bd.query("SELECT id FROM remember_token_seccion WHERE id_usuario = ?", [usuario.id]);
+
+        if (existingToken.length > 0) {
+            // Actualizar el existente
+            await bd.query(
+                "UPDATE remember_token_seccion SET token_hash = ?, expires_at = ? WHERE id_usuario = ?",
+                [tokenHash, expiresString, usuario.id]
+            );
+        } else {
+            // Crear uno nuevo
+            await bd.query(
+                "INSERT INTO remember_token_seccion (id, id_usuario, token_hash, expires_at) VALUES (?, ?, ?, ?)",
+                [uuidv4(), usuario.id, tokenHash, expiresString]
+            );
+        }
 
         res.cookie('remember_token', persistentToken, {
             maxAge: 30 * 24 * 60 * 60 * 1000, // 30 días
             httpOnly: true,
-            secure: true, // ✅ Obligatorio para cross-site (Railway <-> Netlify)
-            sameSite: 'none', // ✅ Obligatorio para cross-site
+            secure: true, // ✅ Obligatorio para sameSite: 'none'
+            sameSite: 'none', 
             path: '/'
         });
 

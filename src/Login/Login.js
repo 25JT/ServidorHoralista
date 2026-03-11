@@ -2,6 +2,8 @@
 import { app } from "../config/Seccion.js";
 import bcrypt from 'bcrypt';
 import bd from "../config/Bd.js";
+import crypto from 'crypto';
+import { v4 as uuidv4 } from 'uuid';
 // login 
 
 app.post("/login", async (req, res) => {
@@ -62,12 +64,28 @@ app.post("/login", async (req, res) => {
         req.session.role = usuario.rol;
         req.session.negocio_creado = negocio_creado;
 
+        // 🆔 Generar Persistent Token (Remember Me)
+        const persistentToken = uuidv4();
+        const tokenHash = crypto.createHash('sha256').update(persistentToken).digest('hex');
+        const tokenExpiracion = new Date();
+        tokenExpiracion.setDate(tokenExpiracion.getDate() + 30); // 30 días
+
+        await bd.query(
+            "INSERT INTO remember_token_seccion (id, id_usuario, token_hash, expires_at) VALUES (?, ?, ?, ?)",
+            [uuidv4(), usuario.id, tokenHash, tokenExpiracion.toISOString().slice(0, 19).replace('T', ' ')]
+        );
+
+        res.cookie('remember_token', persistentToken, {
+            maxAge: 30 * 24 * 60 * 60 * 1000, // 30 días
+            httpOnly: true,
+            secure: true,
+            sameSite: 'none',
+            path: '/'
+        });
+
         // 🔍 Debug: Verificar que la sesión se guardó
-        console.log('✅ Login exitoso - Sesión creada:');
-        console.log('   Session ID:', req.sessionID);
+        console.log('✅ Login exitoso - Sesión creada y Token emitido:');
         console.log('   User ID:', req.session.userId);
-        console.log('   Role:', req.session.role);
-        console.log('   Negocio creado:', req.session.negocio_creado);
 
         // ✅ Forzar guardado de sesión antes de responder
         req.session.save((err) => {

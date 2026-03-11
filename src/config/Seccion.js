@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import session from 'express-session';
+import cookieParser from 'cookie-parser';
 import { AllowedOrigins, PrimaryRuta } from "../RutaFront/Ruta.js";
 
 export const app = express();
@@ -24,19 +25,21 @@ app.use(cors({
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(cookieParser());
 
 // ✅ Configuración de sesiones DINÁMICA
 app.use(session({
     secret: 'clave_secreta_segura', // ⚠️ En producción usa una variable de entorno
-    resave: false,
+    resave: true, // Forzar guardado para asegurar que el MaxAge se actualice
     saveUninitialized: false,
+    rolling: true, // Renueva la sesión en cada petición
+    name: 'session_horalista', // Nombre personalizado para evitar colisiones
     cookie: {
-        maxAge: 1000 * 60 * 60, // 1 hora
+        maxAge: 1000 * 60 * 60 * 24, // Aumentado a 24 horas para facilitar la persistencia
         httpOnly: true,
-        // ✅ secure true si NO es localhost (para que funcionen las cookies en Railway/Netlify)
-
-        secure: true,
-        sameSite: 'none' // ✅ Permite cookies entre diferentes dominios (Railway <-> Netlify)
+        secure: true, // true solo con HTTPS
+        sameSite: 'none', // ✅ Permite cookies entre diferentes dominios (Railway <-> Netlify)
+        path: '/' // Asegurar que sea global
     }
 }));
 

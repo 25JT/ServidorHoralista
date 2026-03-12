@@ -21,7 +21,7 @@ export async function verificarSesion(req, res, next) {
         try {
             const tokenHash = hashToken(token);
             // console.log(`[SessionCheck] Buscando token hash: ${tokenHash}`);
-            
+
             const [rows] = await bd.query(
                 "SELECT id_usuario FROM remember_token_seccion WHERE token_hash = ? AND expires_at > NOW()",
                 [tokenHash]
@@ -62,13 +62,13 @@ export async function verificarSesion(req, res, next) {
                     res.cookie('remember_token', nuevoToken, {
                         maxAge: 30 * 24 * 60 * 60 * 1000, // 30 días
                         httpOnly: true,
-                        secure: true, 
+                        secure: true,
                         sameSite: 'none',
                         path: '/'
                     });
 
-                    console.log(`[RememberMe] Sesión restaurada y token rotado para el usuario: ${userId}`);
-                    
+                    //  console.log(`[RememberMe] Sesión restaurada y token rotado para el usuario: ${userId}`);
+
                     // Guardar explícitamente para evitar problemas de concurrencia
                     return req.session.save(() => next());
                 }

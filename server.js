@@ -36,7 +36,10 @@ import "./src/TourTutos/TourGeneral.js";
 import "./src/Notificacion/ValidarNotificaciones.js";
 import "./src/Notificacion/Calificar.js";
 import "./src/Disponibilidad Citas datos usuario/CitaEnCurso.js";
-import "./src/Disponibilidad Citas datos usuario/ControlEstados.js";
+import { startControlEstados } from "./src/Disponibilidad Citas datos usuario/ControlEstados.js";
 import "./src/Login/EstadoSesion.js";
+import { server, io } from "./src/config/Seccion.js";
+
 //const RutaFront = "https://fromprueba-production.up.railway.app";// cmabiar por el dominio del front 
+
 

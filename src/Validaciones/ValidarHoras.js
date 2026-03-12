@@ -51,7 +51,7 @@ app.post("/validarHoras", async (req, res) => {
              FROM agenda a
              LEFT JOIN catalogos c ON a.id_catalogo = c.id
              WHERE a.id_pservicio = ? AND a.fecha = ? 
-             AND a.estado IN ('confirmada', 'pendiente', 'reservada')`,
+             AND a.estado IN ('confirmada', 'pendiente', 'reservada', '0', '1')`,
             [id, fecha]
         );
 

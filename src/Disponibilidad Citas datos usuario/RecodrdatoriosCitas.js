@@ -7,6 +7,7 @@ import envioMsjWpp from "../VincularWhatsApp/EnvioMsjWpp.js";
 // 📌 Recordatorios → cada 15 minutos en el segundo 0
 cron.schedule("0 */1 * * * *", () => {
     console.log("⏰ Ejecutando recordatorio de citas...");
+
     recordatorioCitas();
     envioMsjWpp();
 
@@ -26,7 +27,7 @@ SELECT
 FROM horalista.agenda a
 INNER JOIN horalista.usuario u 
     ON a.id_usuario_cliente = u.id
-WHERE a.estado = 'pendiente'
+WHERE a.estado IN ('pendiente', '0')
   AND a.recordatorio_enviado = 0
   AND TIMESTAMP(a.fecha, a.hora)
         BETWEEN NOW()

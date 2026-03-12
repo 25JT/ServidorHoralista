@@ -7,3 +7,9 @@ export const AllowedOrigins = [
 
 // Para mantener compatibilidad si algún archivo aún usa RutaFront (opcional)
 export const RutaFront = PrimaryRuta;
+
+
+server.listen(3000, () => {
+    console.log("Server funciona en el puerto 3000");
+    startControlEstados(io);
+});

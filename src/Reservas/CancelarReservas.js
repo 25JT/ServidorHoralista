@@ -1,4 +1,4 @@
-import { app } from "../config/Seccion.js";
+import { app, io } from "../config/Seccion.js";
 import bd from "../config/Bd.js";
 import createTransporter from "../config/correo.js";
 import { verificarSesion } from "../middleware/autenticacion.js";
@@ -31,6 +31,12 @@ app.put("/api/Reservas/cancelar", verificarSesion, async (req, res) => {
         }
 
         await bd.query("UPDATE agenda SET estado = 'cancelada' , recordatorio_enviado = 1 WHERE id = ?", [Agid]);
+
+        // Emitir evento de Socket.io
+        const io = req.app.get("io");
+        console.log(`📢 [CancelarReservas] Emitiendo 'cancelada' a ${io.sockets.sockets.size} clientes.`);
+        io.emit("actualizar_estado_citas", { estado: "cancelada", id_cita: Agid });
+
         res.json({ success: true, message: "Cita cancelada correctamente" });
 
         const [usuario] = await bd.query("SELECT nombre,correo FROM usuario WHERE id = ?", [Useid]);

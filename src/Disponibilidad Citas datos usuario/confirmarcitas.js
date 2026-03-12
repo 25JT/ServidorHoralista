@@ -1,4 +1,4 @@
-import { app } from "../config/Seccion.js";
+import { app, io } from "../config/Seccion.js";
 import bd from "../config/Bd.js";
 
 
@@ -30,6 +30,9 @@ WHERE id = ?;
 
 
         if (result.affectedRows > 0) {
+            const numClientes = io.sockets.sockets.size;
+            console.log(`📢 [Socket.io] Confirmación emitida. Enviando a ${numClientes} clientes.`);
+            io.emit("actualizar_estado_citas", { estado: "confirmada", id_cita: id });
             res.json({ success: true, message: "Cita confirmada" });
         } else {
             res.status(404).json({ success: false, message: "Cita no encontrada" });

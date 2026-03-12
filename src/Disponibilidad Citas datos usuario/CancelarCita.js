@@ -1,4 +1,4 @@
-import { app } from "../config/Seccion.js";
+import { app, io } from "../config/Seccion.js";
 import bd from "../config/Bd.js";
 import createTransporter from "../config/correo.js";
 import { sessions } from "../VincularWhatsApp/VincularWpp.js";
@@ -184,6 +184,11 @@ Si crees que esto es un error, por favor contacta con el establecimiento.`;
         } catch (wppError) {
             console.error("Error enviando notificación de WhatsApp:", wppError);
         }
+
+        // Emitir evento de Socket.io
+        const numClientes = io.sockets.sockets.size;
+        console.log(`📢 [Socket.io] Cancelación emitida. Enviando a ${numClientes} clientes.`);
+        io.emit("actualizar_estado_citas", { estado: "cancelada", id_cita: id });
 
         res.json({ success: true, message: "Cita cancelada exitosamente" });
 

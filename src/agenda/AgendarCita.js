@@ -83,7 +83,7 @@ app.post("/agendarcita", verificarSesion, async (req, res) => {
             `SELECT a.hora, c.duracion 
              FROM agenda a 
              LEFT JOIN catalogos c ON a.id_catalogo = c.id
-             WHERE a.id_pservicio = ? AND a.fecha = ? AND a.estado IN ('pendiente','confirmada','reservada')`,
+             WHERE a.id_pservicio = ? AND a.fecha = ? AND a.estado IN ('pendiente','confirmada','reservada', '0', '1')`,
             [id, fecha]
         );
 

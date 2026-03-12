@@ -3,6 +3,8 @@ import cors from "cors";
 import session from 'express-session';
 import cookieParser from 'cookie-parser';
 import dotenv from "dotenv";
+import http from "http";
+import { Server } from "socket.io";
 
 import { AllowedOrigins, PrimaryRuta } from "../RutaFront/Ruta.js";
 dotenv.config();
@@ -56,10 +58,35 @@ console.trace('Session cookie configured with secure: true, sameSite: none');
 //     next();
 // });
 
-app.listen(3000, () => {
-    console.log("Server funciona en el puerto " + 3000);
+export const server = http.createServer(app);
+
+export const io = new Server(server, {
+    cors: {
+        origin: AllowedOrigins,
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE"]
+    }
 });
 
+app.set("io", io);
 
+io.on("connection", (socket) => {
+    console.log("🚀 [Socket.io] Nuevo cliente conectado:", socket.id);
 
+    // Prueba inmediata de comunicación
+    socket.emit("actualizar_estado_citas", { info: "Conexión inicial exitosa" });
 
+    socket.on("disconnect", (reason) => {
+        console.log("❌ [Socket.io] Cliente desconectado:", socket.id, "Motivo:", reason);
+    });
+});
+
+// Heartbeat de prueba cada 10 segundos para verificar comunicación
+setInterval(() => {
+    if (io.sockets.sockets.size > 0) {
+        //   console.log(`💓 [Socket.io] Enviando heartbeat a ${io.sockets.sockets.size} cliente(s)...`);
+        io.emit("actualizar_estado_citas", { heartbeat: true, timestamp: new Date().toISOString() });
+    }
+}, 10000);
+
+// El servidor se inicia ahora en server.js para asegurar que todas las rutas se registren primero.

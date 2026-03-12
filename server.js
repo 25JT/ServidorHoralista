@@ -43,3 +43,7 @@ import { server, io } from "./src/config/Seccion.js";
 //const RutaFront = "https://fromprueba-production.up.railway.app";// cmabiar por el dominio del front 
 
 
+server.listen(3000, () => {
+    console.log("Server funciona en el puerto 3000");
+    startControlEstados(io);
+});

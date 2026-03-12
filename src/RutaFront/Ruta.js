@@ -9,7 +9,3 @@ export const AllowedOrigins = [
 export const RutaFront = PrimaryRuta;
 
 
-server.listen(3000, () => {
-    console.log("Server funciona en el puerto 3000");
-    startControlEstados(io);
-});

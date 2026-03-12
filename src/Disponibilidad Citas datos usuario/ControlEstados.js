@@ -21,7 +21,7 @@ export function startControlEstados(io) {
         
 `);
 
-      console.log(resEnCurso);
+
 
       if (resEnCurso.affectedRows > 0) {
         //    const numClientes = io.sockets.sockets.size;
